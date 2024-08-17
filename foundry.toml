@@ -1,0 +1,35 @@
+[profile.default]
+src = 'src'
+out = 'out'
+test = "test"
+script = "script"
+solc = "0.8.24"
+evm_version = "cancun"
+
+optimizer = true
+optimizer_runs = 1500
+fs_permissions = [{ access = "read-write", path = "./"}]
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+func_attrs_with_params_multiline = false
+quote_style = 'double'
+
+[profile.default.invariant]
+runs = 512
+depth = 50
+fail_on_revert = false
+
+# Speed up compilation and tests during development
+[profile.lite]
+optimizer = false
+
+
+[rpc_endpoints]
+local = "http://localhost:8545"
+arbitrum_sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
+
+[etherscan]
+arbitrum_sepolia = { key = "${ARBITRUM_ETHERSCAN_API_KEY}", url = "https://sepolia.arbiscan.io", chain = "421614" }

@@ -13,11 +13,11 @@ import {IVolatilityOracle} from "./oracle/interfaces/IVolatilityOracle.sol";
 ///@title Manager Storage Contract
 /// @dev This abstract contract defines all the storage of position manager.
 abstract contract ManagerStorage {
-    bytes32 internal constant TRANSIENT_SUB_HASH = keccak256("transientStorage(uint256 subAccount)");
+    bytes32 internal constant TRANSIENT_SUB_TYPE_HASH = keccak256("transientStorage(uint256 subAccount)");
 
-    bytes32 internal constant TRANSIENT_MKT_HASH = keccak256("transientStorage(uint256 marketId)");
+    bytes32 internal constant TRANSIENT_MKT_TYPE_HASH = keccak256("transientStorage(uint256 marketId)");
 
-    bytes32 internal constant TRANSIENT_EXP_HASH = keccak256("transientStorage(uint256 marketId, uint256 expiry)");
+    bytes32 internal constant TRANSIENT_EXP_TYPE_HASH = keccak256("transientStorage(uint256 marketId, uint256 expiry)");
 
     /// @dev The central Hub contract address
     IHub public hub;

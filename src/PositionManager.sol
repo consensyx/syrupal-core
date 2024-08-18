@@ -105,8 +105,8 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
             ///
             ///     <--- most significant bit               least significant bit --->
 
-            uint256 fromSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_HASH, transfers[i].from)));
-            uint256 toSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_HASH, transfers[i].to)));
+            uint256 fromSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, transfers[i].from)));
+            uint256 toSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, transfers[i].to)));
             (uint256 fromBitMap, uint256 toBitMap) = (fromSlot.tload(), toSlot.tload());
 
             if (fromBitMap == 0) {
@@ -141,7 +141,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
         // As long as the sub-account has negative cash or short option positions, it needs to evaluate margin
         for (uint256 i; i < count; i++) {
-            uint256 _slot = uint256(keccak256(abi.encode(TRANSIENT_SUB_HASH, uniqueAccounts[i])));
+            uint256 _slot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, uniqueAccounts[i])));
             uint256 bitMap = _slot.tload();
 
             if ((bitMap >> 1) & 1 == 1) {
@@ -221,7 +221,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     {
         for (uint256 i = 0; i < assetBalances.length; i++) {
             (uint256 marketId, uint256 expiry, uint256 strike, bool isCall) = Encoding.fromSubId(assetBalances[i].subId);
-            uint256 marketSlot = uint256(keccak256(abi.encode(TRANSIENT_MKT_HASH, marketId)));
+            uint256 marketSlot = uint256(keccak256(abi.encode(TRANSIENT_MKT_TYPE_HASH, marketId)));
 
             // Saving gas for store same market spot price in transient storage
             if (marketSlot.tload() == 0) {
@@ -229,7 +229,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
             }
 
             // Same expiry position can have different strike price
-            uint256 expirySlot = uint256(keccak256(abi.encode(TRANSIENT_EXP_HASH, marketId, expiry)));
+            uint256 expirySlot = uint256(keccak256(abi.encode(TRANSIENT_EXP_TYPE_HASH, marketId, expiry)));
 
             if (expirySlot.tload() == 0) {
                 expirySlot.tstore(_getForwardPrice(marketId, expiry));
@@ -280,13 +280,13 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     ) internal view returns (int256 margin, int256 marketValue) {
         uint256 markPrice;
         {
+            // Note: long position doesn't have any "margin", can't be used to offset other positions
+            if (optionPos.balance > 0) return (0, marketValue);
+
             uint256 vol = volOracles[marketId].getVol(uint128(optionPos.strike), uint64(expiry));
 
             markPrice = _calcBSMPrice(forwardPrice, optionPos.strike, expiry, vol, optionPos.isCall);
             marketValue = markPrice.toInt256().multiplyDecimal(optionPos.balance);
-
-            // Note: long position doesn't have any "margin", can't be used to offset other positions
-            if (optionPos.balance > 0) return (0, marketValue);
         }
 
         if (optionPos.isCall) {
@@ -505,7 +505,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
             (uint256 marketId, uint256 expiry, uint256 strike, bool isCall) = Encoding.fromSubId(transfers[i].subId);
 
-            uint256 expirySlot = uint256(keccak256(abi.encode(TRANSIENT_EXP_HASH, marketId, expiry)));
+            uint256 expirySlot = uint256(keccak256(abi.encode(TRANSIENT_EXP_TYPE_HASH, marketId, expiry)));
 
             if (expirySlot.tload() == 0) {
                 expirySlot.tstore(_getForwardPrice(marketId, expiry));
@@ -520,7 +520,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
             // 1: transfer option position
             _transfer(transfers[i].counterParty, feeRecipient, option, transfers[i].subId, transfers[i].amount);
 
-            // 2: transfer usd
+            // 2: transfer usdx
             _transfer(feeRecipient, transfers[i].counterParty, usdx, 0, marketValue);
 
             // double check counterParty mm margin

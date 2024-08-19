@@ -89,24 +89,21 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
             /// For saving gas, we use bitmap to store every sub-acccount transfer info
             ///
-            /// (1) uniqueFlag       1bit    : Mark this sub-account has been accessed
-            /// (2) decreaseUSD       1bit    : Mark the USD balance of this sub-account is decreasing
-            /// (3) ShortPosition      1bit    : This sub-account has a short position
-            /// (4) OIFee             64bits  : The open interest fee for per transfer
-            /// ( )                   189bits : Zero-bits
-            ///
+            /// (1) UniqueFlag       1bit    : Mark this sub-account has been accessed
+            /// (2) DecreaseUSD      1bit    : Mark the USD balance of this sub-account is decreasing
+            /// (3) ShortPosition    1bit    : This sub-account has a short position
+            /// (4) OIFee            64bits  : The open interest fee for per transfer
+            /// (5)                  189bits : Zero-bits
             /// ========================================================================================
             ///
-            /// The bitmap pattern is :
-            ///
-            ///          (  )              (4)            (3)             (2)              (1)
-            ///     <-- 189 bits --> <-- 64 bits --> <-- 1 bit -->   <-- 1 bit -->  <-- 1 bit -->
-            ///         Zeros            OIFee       ShortPosition    decreaseUSD     uniqueFlag
-            ///
-            ///     <--- most significant bit               least significant bit --->
+            ///          (  )              (4)            (3)             (2)            (1)
+            ///      <-- 189 bits --> <-- 64 bits --> <-- 1 bit -->   <-- 1 bit -->   <-- 1 bit -->
+            ///         Zeros            OIFee       ShortPosition    DecreaseUSD     UniqueFlag
+            ///      <--- most significant bit                          least significant bit  --->
 
             uint256 fromSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, transfers[i].from)));
             uint256 toSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, transfers[i].to)));
+
             (uint256 fromBitMap, uint256 toBitMap) = (fromSlot.tload(), toSlot.tload());
 
             if (fromBitMap == 0) {

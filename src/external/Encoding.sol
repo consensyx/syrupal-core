@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 /**
  * @notice Util functions for encoding / decoding IDs into option details.
- *         [ 1 bit ] [ 63 bits ] [ 32 bit ] = uint96 subId
+ *         [ 16 bit][ 1 bit ] [ 63 bits ] [ 32 bit ] = uint112 subId
  *           isCall     strike     expiry
  *         Can support:
  *         - expiries: up to year 2106

@@ -225,7 +225,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
                 marketSlot.tstore(spotOracles[marketId].getSpot());
             }
 
-            // Same expiry position can have different strike price
+            // Options with the same expiry but different strike prices always share same forward price.
             uint256 expirySlot = uint256(keccak256(abi.encode(TRANSIENT_EXP_TYPE_HASH, marketId, expiry)));
 
             if (expirySlot.tload() == 0) {

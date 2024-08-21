@@ -7,7 +7,7 @@ Syrupal is an on-chain Option Exchange. Currently, there are two main types of o
 ## How to Trade Options
 The first thing to consider is how to buy and sell options. In our contract, this is achieved through the PositionManager contract's *batchTransfers* function.
 
-```
+```solidity
 
 IAsset.BalanceTransfer[] memory transfers = new IAsset.BalanceTransfer[](2);
 
@@ -21,6 +21,8 @@ positionManager.batchTransfers(transfers, "");
 Our order matching is done through an offline matching engine, so batchTransfers can handle multiple transactions simultaneously.
 
 ```
+
+In **batchTransfer** function, our implementation is similar to a flash loan. We first assume that the user's assets are sufficient to meet the MM requirement and update the user's balance through **updateBalance**. Then, we evaluate the user's margin using the **evaluateMargin** function. If the margin requirement is not met, the entire transaction will be reverted.
 
 ## SubAccount
 Like many derivatives trading systems, we also use SubAccount mechanism to manage user assets. A single EVM address can create multiple SubAccounts, and the assets of each SubAccount are isolated from one another.
@@ -49,13 +51,18 @@ When a user opens a new position, their USDX balance minus the IM must be greate
 ## About Liquidation
 When a user's USDX balance falls below the MM, they need to be liquidated. The liquidation process consists of the following stages:
 
-* Mark the user as flagged.
+* Mark the user as liquidated.
 * Auction the user's assets at market price.
-* If the previous step is incomplete, continue auctioning the user's assets at a discounted price.
+* If the market order does not fully process the user's assets and liabilities, continue auctioning the user's assets at a discounted price.
+
+If at any step the user's assets return above the IM (initial margin), the user can be reclassified as a normal user. If the requirement is not met, the process continues to the below steps
+
+
 * Takeover: If after these stages the user's assets are still below the MM, invoke the takeover function in the PositionManager contract, transferring all the user's assets (including USDX) to the Insurance Fund account.
 * AutoDeleverage: The offline matching engine, following an algorithm, typically selects the largest profit-holder of this option in the market as the counterparty to trade with the Insurance Fund. The closed positions are automatically settled according to BSM pricing, and the counterparty's profits and losses are fully transparent.
 
-## About the Insurance Fund
+
+## About Insurance Fund
 All protocol fees, such as open interest fees, maker fees, and taker fees, go into this account.
 All liquidated users' assets and liabilities are transferred to the Insurance Fund at the takeover stage.
 

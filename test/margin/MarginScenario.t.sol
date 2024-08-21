@@ -27,8 +27,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         _trade(aliceAcc, positionId, 1e18, bobAcc, int256(markPrice));
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 19130.1132e18, 1e18);
         assertApproxEqAbs(aliceMM, 51220.1132e18, 1e18);
@@ -53,8 +53,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         _trade(aliceAcc, positionId, 1e18, bobAcc, int256(markPrice));
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 19845.1132e18, 1e18);
         assertApproxEqAbs(aliceMM, 51770.1132e18, 1e18);
@@ -84,8 +84,8 @@ contract MarginScenarioTest is MarginBaseSetup {
         markPrice = 682.0768e18;
 
         _trade(aliceAcc, positionId, 1e18, bobAcc, int256(markPrice));
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 36932.3094e18, 1e18);
         assertApproxEqAbs(aliceMM, 57292.3094e18, 1e18);
@@ -116,8 +116,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         _trade(aliceAcc, positionId, 1e18, bobAcc, int256(markPrice));
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 25566.8488e18, 1e18);
         assertApproxEqAbs(aliceMM, 55586.8488e18, 1e18);
@@ -154,8 +154,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         _trade(bobAcc, positionId, 2e18, aliceAcc, int256(markPrice));
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 55037.87016e18, 1e18);
         assertApproxEqAbs(aliceMM, 71257.87016e18, 1e18);
@@ -174,8 +174,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         _trade(aliceAcc, positionId, 0.1e18, bobAcc, int256(markPrice));
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 55446.78676e18, 1e18);
         assertApproxEqAbs(aliceMM, 71666.78676e18, 1e18);
@@ -198,8 +198,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         _trade(bobAcc, positionId, 1.1e18, aliceAcc, int256(markPrice));
 
-        (aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 54813.4706599999e18, 1e18);
         assertApproxEqAbs(aliceMM, 71033.47066e18, 1e18);
@@ -211,8 +211,8 @@ contract MarginScenarioTest is MarginBaseSetup {
         vm.warp(block.timestamp + 1);
         _setStablePrice(0.95e18);
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 54373.6588536e18, 1e18);
         assertApproxEqAbs(aliceMM, 71920.1132e18, 1e18);
@@ -220,16 +220,16 @@ contract MarginScenarioTest is MarginBaseSetup {
         vm.warp(block.timestamp + 1);
         _setStablePrice(0.98e18);
 
-        (aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        aliceMM = positionManager.getTotalMargin(aliceAcc, false);
         assertApproxEqAbs(aliceIM, 55700.1132e18, 1e18);
         assertApproxEqAbs(aliceMM, 71920.1132e18, 1e18);
 
         vm.warp(block.timestamp + 1);
         _setStablePrice(1.02e18);
 
-        (aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 55700.1132e18, 1e18);
         assertApproxEqAbs(aliceMM, 71920.1132e18, 1e18);
@@ -254,8 +254,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         positionManager.exercise(aliceAcc);
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 83035.5618821577e18, 1e18);
         assertApproxEqAbs(aliceMM, 87844.1096e18, 1e18);
@@ -272,8 +272,8 @@ contract MarginScenarioTest is MarginBaseSetup {
 
         positionManager.exercise(aliceAcc);
 
-        (aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 96969.0443e18, 1e18);
         assertApproxEqAbs(aliceMM, 96969.0443e18, 1e18);
@@ -299,8 +299,8 @@ contract MarginScenarioTest is MarginBaseSetup {
         _setVolatility("ETH", 3960e18, uint64(expiry1), getDefaultETHSVI());
         _setVolatility("ETH", 3960e18, uint64(expiry2), getDefaultETHSVI());
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 43591.1857555556e18, 1e18);
         assertApproxEqAbs(aliceMM, 66595.6302e18, 1e18);

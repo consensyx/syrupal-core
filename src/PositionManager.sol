@@ -24,7 +24,6 @@ import {IHub} from "./interfaces/IHub.sol";
 import {IAsset} from "./interfaces/IAsset.sol";
 import {IUSDX} from "./interfaces/IUSDX.sol";
 import {IOption} from "./interfaces/IOption.sol";
-
 import {ILiquidation} from "./interfaces/ILiquidation.sol";
 import {IPositionManager} from "./interfaces/IPositionManager.sol";
 
@@ -196,10 +195,10 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
         _preEvaluate(subAccount, txId, caller, oiFee, preData);
 
-        (int256 postMargin,) =
-            _calcTotalMarginAndMTM(option.getAccountBalance(subAccount), usdBalance, !mmCallerAccounts[caller]);
+        int256 totalAvailableMargin =
+            _calcTotalMargin(option.getAccountBalance(subAccount), usdBalance, !mmCallerAccounts[caller]);
 
-        if (postMargin < 0) revert Errors.NegativeMargin();
+        if (totalAvailableMargin < 0) revert Errors.NegativeMargin();
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -211,10 +210,9 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     /// @param usdBalance USD balance of the account
     /// @param isIM Boolean indicating if this is the initial calculation
     /// @return portfolioMargin Total margin of the portfolio
-    /// @return portfolioMarketValue Total market value of the portfolio
-    function _calcTotalMarginAndMTM(IAsset.AssetBalance[] memory assetBalances, int256 usdBalance, bool isIM)
+    function _calcTotalMargin(IAsset.AssetBalance[] memory assetBalances, int256 usdBalance, bool isIM)
         internal
-        returns (int256 portfolioMargin, int256 portfolioMarketValue)
+        returns (int256 portfolioMargin)
     {
         for (uint256 i = 0; i < assetBalances.length; i++) {
             (uint256 marketId, uint256 expiry, uint256 strike, bool isCall) = Encoding.fromSubId(assetBalances[i].subId);
@@ -234,11 +232,8 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
             Option memory position = Option({strike: strike, balance: assetBalances[i].balance, isCall: isCall});
 
-            (int256 margin, int256 markToMarket) =
+            portfolioMargin +=
                 _calcOptionMargin(isIM, marketId, expiry, marketSlot.tload(), expirySlot.tload(), position);
-
-            portfolioMargin += margin;
-            portfolioMarketValue += markToMarket;
         }
 
         if (isIM) {
@@ -254,7 +249,6 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
             portfolioMargin += portfolioMargin.multiplyDecimal(depegMultiplier.toInt256());
         }
 
-        portfolioMarketValue += usdBalance;
         portfolioMargin += usdBalance;
     }
 
@@ -266,7 +260,6 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     /// @param forwardPrice Forward price of the underlying asset at the option's expiry
     /// @param optionPos Struct containing the option position details such as strike price and balance
     /// @return margin Required margin for the position
-    /// @return marketValue Market value of the position
     function _calcOptionMargin(
         bool isIM,
         uint256 marketId,
@@ -274,17 +267,13 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
         uint256 spotPrice,
         uint256 forwardPrice,
         Option memory optionPos
-    ) internal view returns (int256 margin, int256 marketValue) {
-        uint256 markPrice;
-        {
-            // Note: long position doesn't have any "margin", can't be used to offset other positions
-            if (optionPos.balance > 0) return (0, marketValue);
+    ) internal view returns (int256 margin) {
+        // Long position doesn't occupy any margin
+        if (optionPos.balance > 0) return 0;
 
-            uint256 vol = volOracles[marketId].getVol(uint128(optionPos.strike), uint64(expiry));
+        uint256 volatility = volOracles[marketId].getVol(uint128(optionPos.strike), uint64(expiry));
 
-            markPrice = _calcBSMPrice(forwardPrice, optionPos.strike, expiry, vol, optionPos.isCall);
-            marketValue = markPrice.toInt256().multiplyDecimal(optionPos.balance);
-        }
+        uint256 markPrice = _calcBSMPrice(forwardPrice, optionPos.strike, expiry, volatility, optionPos.isCall);
 
         if (optionPos.isCall) {
             margin = _calcShortCallMargin(
@@ -524,7 +513,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
             _transfer(feeRecipient, transfers[i].counterParty, usdx, 0, marketValue);
 
             // double check counterParty mm margin
-            (int256 availableMargin,) = getTotalMarginAndMarketValue(transfers[i].counterParty, false);
+            int256 availableMargin = getTotalMargin(transfers[i].counterParty, false);
 
             if (availableMargin < 0) revert Errors.NegativeMargin();
 
@@ -538,37 +527,57 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
                                 VIEWER FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Returns the total margin and market value for a sub-account
-    /// @dev Calculates the aggregate margin and market value across all positions held by an account
+    /// @notice Returns the total margin for a sub-account
+    /// @dev Calculates the aggregate margin across all positions held by an account
     /// @param accountId The ID of the account for which to calculate margin and market value
     /// @param isIM Boolean indicating whether to use initial margin requirements in the calculation
     /// @return totalMargin The total margin required across all positions for the account
-    /// @return totalMarketValue The total market value of all positions held by the account
-    function getTotalMarginAndMarketValue(uint256 accountId, bool isIM) public returns (int256, int256) {
-        return _calcTotalMarginAndMTM(option.getAccountBalance(accountId), usdx.balances(accountId), isIM);
+    function getTotalMargin(uint256 accountId, bool isIM) public returns (int256) {
+        return _calcTotalMargin(option.getAccountBalance(accountId), usdx.balances(accountId), isIM);
     }
 
-    /// @notice Retrieves the margin requirement and market value for a specific option position
+    /// @notice Returns total market value for a sub-account
+    /// @dev Calculates the aggregate  market value across all positions held by an account
+    /// @param accountId The ID of the account for which to calculate margin and market value
+    /// @return totalMarketValue The total market value of all positions held by the account
+    function getTotalMarketValue(uint256 accountId) external view returns (int256 totalMarketValue) {
+        IAsset.AssetBalance[] memory assetBalances = option.getAccountBalance(accountId);
+
+        for (uint256 i = 0; i < assetBalances.length; i++) {
+            (uint256 marketId, uint256 expiry, uint256 strike, bool isCall) = Encoding.fromSubId(assetBalances[i].subId);
+
+            uint256 markPrice = _calcBSMPrice(
+                _getForwardPrice(marketId, expiry),
+                strike,
+                expiry,
+                volOracles[marketId].getVol(uint128(strike), uint64(expiry)),
+                isCall
+            );
+
+            totalMarketValue += markPrice.toInt256().multiplyDecimal(assetBalances[i].balance);
+        }
+
+        totalMarketValue += usdx.balances(accountId);
+    }
+
+    /// @notice The mark price of a standard option contract
     /// @param marketId The market ID of the option
     /// @param strike The strike price of the option
     /// @param expiry The expiration time of the option
     /// @param isCall Boolean indicating if the option is a call
-    /// @param balance The balance of the option position
-    /// @param isIM Boolean indicating if the calculation is for the initial margin
-    /// @return margin The required margin for the position
-    /// @return marketValue The current market value of the position
-    function getMarginAndMarketValue(
-        uint256 marketId,
-        uint256 strike,
-        uint256 expiry,
-        bool isCall,
-        int256 balance,
-        bool isIM
-    ) external view returns (int256 margin, int256 marketValue) {
-        uint256 spotPrice = spotOracles[marketId].getSpot();
-        uint256 forwardPrice = _getForwardPrice(marketId, expiry);
-        Option memory optionPos = Option({strike: strike, isCall: isCall, balance: balance});
-        return _calcOptionMargin(isIM, marketId, expiry, spotPrice, forwardPrice, optionPos);
+    /// @return markPrice the specific option mark price
+    function getMarketPrice(uint256 marketId, uint256 strike, uint256 expiry, bool isCall)
+        external
+        view
+        returns (uint256 markPrice)
+    {
+        markPrice = _calcBSMPrice(
+            _getForwardPrice(marketId, expiry),
+            strike,
+            expiry,
+            volOracles[marketId].getVol(uint128(strike), uint64(expiry)),
+            isCall
+        );
     }
 
     /*//////////////////////////////////////////////////////////////////////////

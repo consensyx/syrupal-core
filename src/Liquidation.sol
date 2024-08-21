@@ -84,7 +84,7 @@ contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
     /// @param initial  if it's true, we use initial margin, otherwise maintenance margin
     /// @return True if the account can be liquidated, otherwise false
     function canLiquidate(uint256 accountId, bool initial) public returns (bool) {
-        (int256 availableMargin,) = manager.getTotalMarginAndMarketValue(accountId, initial);
+        int256 availableMargin = manager.getTotalMargin(accountId, initial);
         return availableMargin < 0;
     }
 }

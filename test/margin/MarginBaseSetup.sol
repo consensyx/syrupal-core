@@ -80,8 +80,8 @@ contract MarginBaseSetup is BaseSetup {
         markPrice = 294.5281e18;
         _trade(aliceAcc, positionId, 1e18, bobAcc, int256(markPrice));
 
-        (int256 aliceIM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, true);
-        (int256 aliceMM,) = positionManager.getTotalMarginAndMarketValue(aliceAcc, false);
+        int256 aliceIM = positionManager.getTotalMargin(aliceAcc, true);
+        int256 aliceMM = positionManager.getTotalMargin(aliceAcc, false);
 
         assertApproxEqAbs(aliceIM, 55700.1132e18, 1e18);
         assertApproxEqAbs(aliceMM, 71920.1132e18, 1e18);

@@ -58,7 +58,7 @@ contract LiquidationTest is BaseSetup {
     }
 
     function test_canotStartLiquidate() public {
-        (int256 tomMM,) = positionManager.getTotalMarginAndMarketValue(tomAcc, false);
+        int256 tomMM = positionManager.getTotalMargin(tomAcc, false);
         assertTrue(tomMM > 0);
         vm.expectRevert(Errors.CannotStartLiquidation.selector);
         liquidation.startLiquidation(tomAcc);
@@ -67,7 +67,7 @@ contract LiquidationTest is BaseSetup {
     function test_canStartLiquidate() public {
         _updateMarketForLiquidate(liquidationTime);
 
-        (int256 tomMM,) = positionManager.getTotalMarginAndMarketValue(tomAcc, false);
+        int256 tomMM = positionManager.getTotalMargin(tomAcc, false);
         assertTrue(tomMM < 0);
         liquidation.startLiquidation(tomAcc);
         assertTrue(liquidation.liquidatedAccounts(tomAcc));
@@ -75,7 +75,7 @@ contract LiquidationTest is BaseSetup {
 
     function test_canotStopLiquidate() public {
         _updateMarketForLiquidate(liquidationTime);
-        (int256 tomMM,) = positionManager.getTotalMarginAndMarketValue(tomAcc, false);
+        int256 tomMM = positionManager.getTotalMargin(tomAcc, false);
         assertTrue(tomMM < 0);
         liquidation.startLiquidation(tomAcc);
         vm.expectRevert(Errors.CannotStopLiquidation.selector);

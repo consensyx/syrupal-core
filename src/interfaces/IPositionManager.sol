@@ -66,12 +66,16 @@ interface IPositionManager is IERC721 {
     /// @param transfers Array of liquidation transfers to be processed
     function autoDeleverage(ILiquidation.LiquidationTransfer[] calldata transfers) external;
 
-    /// @notice Calculate the total margin and market value for an account
+    /// @notice Calculate the total margin of a sub-account
     /// @param accountId Identifier of the account
     /// @param isInitial Boolean indicating if the calculation is for initial margin
     /// @return margin Total calculated margin
-    /// @return marketValue Total market value of the account's positions
-    function getTotalMarginAndMarketValue(uint256 accountId, bool isInitial) external returns (int256, int256);
+    function getTotalMargin(uint256 accountId, bool isInitial) external returns (int256);
+
+    /// @notice Calculate the total market value of a sub-account
+    /// @param accountId Identifier of the account
+    /// @return margin Total calculated market value of all postion and usdx balance
+    function getTotalMarketValue(uint256 accountId) external returns (int256);
 
     /// @notice Emitted when a new account is created, associating it with its owner.
     /// @param owner The address of the account owner.

@@ -69,7 +69,7 @@ contract Hub is IHub, Ownable2Step {
         lastTxId[_account] = _txId;
     }
 
-    /// @dev Modifier to ensure only components of the protocol can call certain functions
+    /// @dev Modifier to ensure only the msg.sender is protocol contract
     modifier onlyProtocol() {
         if (msg.sender != address(manager) && msg.sender != address(usdx) && msg.sender != address(option)) {
             revert Errors.OnlyProtocol();

@@ -16,6 +16,7 @@ import {ReentrancyGuardTransient} from "../libraries/ReentrancyGuardTransient.so
 
 import {IHub} from "../interfaces/IHub.sol";
 import {IUSDX} from "../interfaces/IUSDX.sol";
+import {IPositionManager} from "../interfaces/IPositionManager.sol";
 
 /// @title USDX Stablecoin Contract
 /// @dev This contract represents a stablecoin (USDX) that is backed by a stablecoin asset (e.g., USDC).
@@ -28,6 +29,9 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
     using DecimalMath for uint256;
 
     IHub public hub;
+
+    /// @dev Position manager contract address
+    IPositionManager public manager;
 
     /// @dev stablecoin token address
     IERC20Metadata public immutable stablecoin;
@@ -60,8 +64,9 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
                                      CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////*/
 
-    constructor(IHub _hub, IERC20Metadata _stablecoin) {
+    constructor(IHub _hub, IPositionManager _manager, IERC20Metadata _stablecoin) {
         hub = _hub;
+        manager = _manager;
         stablecoin = _stablecoin;
         stableDecimal = stablecoin.decimals();
     }
@@ -77,7 +82,7 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
 
     /// @inheritdoc IUSDX
     function withdraw(uint256 accountId, uint256 stableAmount, address receiver) external nonReentrant {
-        if (msg.sender != hub.manager().ownerOf(accountId)) revert Errors.OnlyAccountOwner();
+        if (msg.sender != manager.ownerOf(accountId)) revert Errors.OnlyAccountOwner();
         // Withdrawals will be suspend if maintenance margin < 0
         if (hub.liquidation().canLiquidate(accountId, false)) revert Errors.NegativeMargin();
 
@@ -97,7 +102,7 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
         public
         returns (int256 postBalance, uint64 oiFee)
     {
-        if (msg.sender != address(hub.manager())) {
+        if (msg.sender != address(manager)) {
             revert Errors.OnlyProtocol();
         }
 
@@ -106,7 +111,7 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
 
     /// @inheritdoc IUSDX
     function donate(uint256 subAccount, uint256 amount) external nonReentrant returns (uint256 burnAmount) {
-        if (msg.sender != address(hub.manager().ownerOf(subAccount))) {
+        if (msg.sender != address(manager.ownerOf(subAccount))) {
             revert Errors.OnlyAccountOwner();
         }
 
@@ -126,7 +131,7 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
 
     /// @inheritdoc IUSDX
     function updateTemporarySupply(int256 amount) external {
-        if (msg.sender != address(hub.manager())) revert Errors.OnlyManager();
+        if (msg.sender != address(manager)) revert Errors.OnlyManager();
 
         temporarySupply += amount;
 
@@ -148,7 +153,7 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
     /// @notice Set the protocol fee recipient sub-account
     /// @param _newRecipient new fee recipient sub-account
     function setFeeRecipient(uint256 _newRecipient) external onlyOwner {
-        hub.manager().ownerOf(_newRecipient);
+        manager.ownerOf(_newRecipient);
 
         feeRecipient = _newRecipient;
         emit FeeRecipientSet(_newRecipient);
@@ -176,7 +181,7 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
 
         // Only withdraw need to check margin
         if (adjustment.amount < 0) {
-            hub.manager().evaluateMargin(txId, adjustment.accountId, true, 0, address(this), preData);
+            manager.evaluateMargin(txId, adjustment.accountId, true, 0, address(this), preData);
         }
     }
 

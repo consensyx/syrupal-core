@@ -9,16 +9,21 @@ import {Errors} from "./libraries/Errors.sol";
 import {DecimalMath} from "./external/decimals/DecimalMath.sol";
 import {ReentrancyGuardTransient} from "./libraries/ReentrancyGuardTransient.sol";
 
-import {IHub} from "./interfaces/IHub.sol";
 import {ILiquidation} from "./interfaces/ILiquidation.sol";
+import {IInsuranceFund} from "./interfaces/IInsuranceFund.sol";
+import {IPositionManager} from "./interfaces/IPositionManager.sol";
 
 /// @title Liquidation Contract
 /// @dev This contract manages the liquidation process for insolvency sub-accounts.
 contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
-    IHub public hub;
-
     /// @dev Trusted Liquidator address
     address public liquidator;
+
+    /// @dev Position manager contract address
+    IPositionManager public manager;
+
+    /// @dev Insurance fund contract address
+    IInsuranceFund public insuranceFund;
 
     /// @dev Liquidated account mapping
     mapping(uint256 accountId => bool) public liquidatedAccounts;
@@ -27,8 +32,9 @@ contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
                                      CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////*/
 
-    constructor(IHub _hub) Ownable2Step() {
-        hub = _hub;
+    constructor(IPositionManager _manager, IInsuranceFund _insuranceFund) Ownable2Step() {
+        manager = _manager;
+        insuranceFund = _insuranceFund;
     }
 
     /// @notice Marks an account as in liquidation status when its USDX balance minus the maintenance margin is less than zero
@@ -40,7 +46,7 @@ contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
         // Will not revert
         if (liquidatedAccounts[liquidateeId]) return;
 
-        if (!canLiquidate(liquidateeId, false) || liquidateeId == hub.insuranceFund().recipient()) {
+        if (!canLiquidate(liquidateeId, false) || liquidateeId == insuranceFund.recipient()) {
             revert Errors.CannotStartLiquidation();
         }
 
@@ -78,7 +84,7 @@ contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
     /// @param initial  if it's true, we use initial margin, otherwise maintenance margin
     /// @return True if the account can be liquidated, otherwise false
     function canLiquidate(uint256 accountId, bool initial) public returns (bool) {
-        (int256 availableMargin,) = hub.manager().getTotalMarginAndMarketValue(accountId, initial);
+        (int256 availableMargin,) = manager.getTotalMarginAndMarketValue(accountId, initial);
         return availableMargin < 0;
     }
 }

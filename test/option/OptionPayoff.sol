@@ -34,8 +34,10 @@ contract OptionPayoffTest is Test {
 
         hub = new Hub();
 
-        liquidation = new Liquidation(hub);
-        option = new Option(hub, liquidation);
+        address managerAddress = computeCreateAddress(address(this), 5);
+
+        liquidation = new Liquidation(PositionManager(managerAddress), IInsuranceFund(address(0)));
+        option = new Option(hub, PositionManager(managerAddress), liquidation);
 
         positionManager = new PositionManager(
             hub, IUSDX(address(0)), option, liquidation, address(this), "Margin Accounts", "MarginNFTs"

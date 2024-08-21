@@ -87,13 +87,15 @@ contract IntegrationSetup is Test {
 
         usdc = new MockERC20("USDC", "USDC", 6);
 
-        usdx = new USDX(hub, usdc);
+        address managerAddress = computeCreateAddress(address(this), 7);
 
-        insuranceFund = new InsuranceFund(hub, usdx, address(this));
+        usdx = new USDX(hub, PositionManager(managerAddress), usdc);
 
-        liquidation = new Liquidation(hub);
+        insuranceFund = new InsuranceFund(PositionManager(managerAddress), usdx, address(this));
 
-        option = new Option(hub, liquidation);
+        liquidation = new Liquidation(PositionManager(managerAddress), insuranceFund);
+
+        option = new Option(hub, PositionManager(managerAddress), liquidation);
 
         positionManager =
             new PositionManager(hub, usdx, option, liquidation, address(this), "Margin Accounts", "MarginNFTs");

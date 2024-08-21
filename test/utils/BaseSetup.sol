@@ -90,13 +90,14 @@ contract BaseSetup is Test {
 
         hub = new Hub();
 
-        usdx = new USDX(hub, usdc);
+        address managerAddress = computeCreateAddress(address(this), 7);
+        usdx = new USDX(hub, PositionManager(managerAddress), usdc);
 
-        insuranceFund = new InsuranceFund(hub, usdx, address(this));
+        insuranceFund = new InsuranceFund(PositionManager(managerAddress), usdx, address(this));
 
-        liquidation = new Liquidation(hub);
+        liquidation = new Liquidation(PositionManager(managerAddress), insuranceFund);
 
-        option = new Option(hub, liquidation);
+        option = new Option(hub, PositionManager(managerAddress), liquidation);
 
         positionManager =
             new PositionManager(hub, usdx, option, liquidation, address(this), "Margin Accounts", "MarginNFTs");

@@ -31,26 +31,41 @@ contract DeployCoreScript is Utils {
         string memory chainName = vm.envString("CHAIN_NAME");
 
         address operator = vm.envAddress("OPERATOR");
-
         require(operator != address(0), "Invalid operator address");
 
         vm.startBroadcast(deployerPrivateKey);
 
-        string memory configJson =
-            vm.readFile(string.concat(vm.projectRoot(), "/script/shared/", chainName, "/config.json"));
-        address usdc = abi.decode(vm.parseJson(configJson, ".usdc"), (address));
+        address usdc = abi.decode(
+            vm.parseJson(
+                vm.readFile(string.concat(vm.projectRoot(), "/script/shared/", chainName, "/config.json")), ".usdc"
+            ),
+            (address)
+        );
 
-        // #1 Deploy core priviledge address
+        // #1 Deploy protocol core address
         Hub hub = new Hub();
 
-        USDX usdx = new USDX(hub, IERC20Metadata(usdc));
+        address managerAddress;
+        // avoid stak too deep issue
+        {
+            address deployer = vm.addr(deployerPrivateKey);
+            uint256 nonce = vm.getNonce(deployer);
+            managerAddress = computeCreateAddress(deployer, nonce + 5);
+        }
 
-        InsuranceFund insuranceFund = new InsuranceFund(hub, usdx, operator);
+        // nonce + 1
+        USDX usdx = new USDX(hub, PositionManager(managerAddress), IERC20Metadata(usdc));
 
-        Liquidation liquidation = new Liquidation(hub);
+        // nonce + 2
+        InsuranceFund insuranceFund = new InsuranceFund(PositionManager(managerAddress), usdx, operator);
 
-        Option option = new Option(hub, liquidation);
+        // nonce + 3
+        Liquidation liquidation = new Liquidation(PositionManager(managerAddress), insuranceFund);
 
+        // nonce + 4
+        Option option = new Option(hub, PositionManager(managerAddress), liquidation);
+
+        // nonce + 5
         PositionManager positionManager =
             new PositionManager(hub, usdx, option, liquidation, operator, "PositionManager NFT", "PM-NFT");
 
@@ -106,7 +121,6 @@ contract DeployCoreScript is Utils {
         string memory jsonOutput = vm.serializeAddress(coreJsonKey, "batchSubmitter", address(batchSubmitter));
 
         _writeDeployment(chainName, "core", jsonOutput);
-
         vm.stopBroadcast();
     }
 

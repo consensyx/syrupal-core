@@ -15,6 +15,7 @@ import {SignedDecimalMath} from "./external/decimals/SignedDecimalMath.sol";
 import {IHub} from "./interfaces/IHub.sol";
 import {IOption} from "./interfaces/IOption.sol";
 import {ILiquidation} from "./interfaces/ILiquidation.sol";
+import {IPositionManager} from "./interfaces/IPositionManager.sol";
 import {IForwardOracle} from "./oracle/interfaces/IForwardOracle.sol";
 
 /// @title Option Trading Contract
@@ -30,6 +31,9 @@ contract Option is IOption, Ownable2Step {
 
     /// @dev The Hub contract addres
     IHub public hub;
+
+    /// @dev Position manager contract address
+    IPositionManager public manager;
 
     /// @dev Liquidation contract address
     ILiquidation public liquidation;
@@ -58,9 +62,11 @@ contract Option is IOption, Ownable2Step {
 
     /// @notice Constructs the Option contract and initializes market settings
     /// @param _hub Reference to the Hub contract
+    /// @param _manager Reference to the Position manager contract
     /// @param _liquidation Reference to the Liquidation contract
-    constructor(IHub _hub, ILiquidation _liquidation) {
+    constructor(IHub _hub, IPositionManager _manager, ILiquidation _liquidation) {
         hub = _hub;
+        manager = _manager;
         liquidation = _liquidation;
     }
 
@@ -77,7 +83,7 @@ contract Option is IOption, Ownable2Step {
         external
         returns (int256 postBalance, uint64 oiFee)
     {
-        if (msg.sender != address(hub.manager())) {
+        if (msg.sender != address(manager)) {
             revert Errors.OnlyProtocol();
         }
 
@@ -140,7 +146,7 @@ contract Option is IOption, Ownable2Step {
     /// @param marketId The market identifier
     /// @param _forwardOracle The address of the forward oracle contract
     function setForwardOracle(uint16 marketId, address _forwardOracle) external onlyOwner {
-        hub.manager().isMarketExist(marketId);
+        manager.isMarketExist(marketId);
         forwardOracle[marketId] = IForwardOracle(_forwardOracle);
         emit ForwardOracleSet(marketId, _forwardOracle);
     }

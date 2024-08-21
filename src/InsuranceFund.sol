@@ -10,21 +10,21 @@ import {Errors} from "./libraries/Errors.sol";
 import {DecimalMath} from "./external/decimals/DecimalMath.sol";
 import {ConvertDecimals} from "./external/decimals/ConvertDecimals.sol";
 
-import {IHub} from "./interfaces/IHub.sol";
 import {IUSDX} from "./interfaces/IUSDX.sol";
 import {IAsset} from "./interfaces/IAsset.sol";
 import {IInsuranceFund} from "./interfaces/IInsuranceFund.sol";
+import {IPositionManager} from "./interfaces/IPositionManager.sol";
 
 /// @title Insurance Fund Contract
-/// @notice andling emergency deposits, withdrawals, and insolvency cover.
+/// @notice Protocol fee recipient, also handling emergency deposits, withdrawals, donate and insolvency repay.
 contract InsuranceFund is Ownable2Step, IInsuranceFund {
     using SafeCast for int256;
     using ConvertDecimals for uint256;
     using SafeERC20 for IERC20Metadata;
     using DecimalMath for uint256;
 
-    /// @notice Hub contract for interaction with other system components
-    IHub public hub;
+    /// @dev Position manager contract address
+    IPositionManager public manager;
 
     /// @dev USDX token contract
     IUSDX public immutable usdx;
@@ -42,11 +42,11 @@ contract InsuranceFund is Ownable2Step, IInsuranceFund {
                                      CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @param _hub Address of the system's hub contract
+    /// @param _manager Address of the PositionManager contract
     /// @param _usdx Address of the USDX contract
     /// @param _operator authorized operator address
-    constructor(IHub _hub, IUSDX _usdx, address _operator) {
-        hub = _hub;
+    constructor(IPositionManager _manager, IUSDX _usdx, address _operator) {
+        manager = _manager;
         usdx = _usdx;
         operator = _operator;
 
@@ -57,9 +57,9 @@ contract InsuranceFund is Ownable2Step, IInsuranceFund {
     /// @notice Creates a recipient sub-account for the insurance fund within the system
     function createRecipient() external onlyOwner {
         // Can't create recipient sub-account repeatedly otherwise the assets held by former recipient cannot be withdraw
-        if (hub.manager().balanceOf(address(this)) >= 1) revert Errors.OnlyOneRecipient();
+        if (manager.balanceOf(address(this)) >= 1) revert Errors.OnlyOneRecipient();
 
-        recipient = hub.manager().createSubAccount(address(this));
+        recipient = manager.createSubAccount(address(this));
 
         emit FeeRecipientCreated(recipient);
     }

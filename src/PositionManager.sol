@@ -489,13 +489,16 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
                 if (counterBalance == 0 || insuranceBalance == 0) revert Errors.NotExistPosition();
 
-                // neither the insurance fund nor the counterparty can increase their positions
-                if (
-                    (counterBalance * transfers[i].amount < 0) // before balance * (-delta) > 0
-                        || (insuranceBalance * transfers[i].amount > 0) // before balance * (+delta) > 0
-                        || (counterBalance * (counterBalance - transfers[i].amount) < 0) // before balance * after balance < 0
-                        || (insuranceBalance * (insuranceBalance + transfers[i].amount) < 0)
-                ) {
+                // Neither insurance fund nor counterparty can increase positions, which means their balance should both approach to 0
+                // Negative balance --------------------------> 0 <-------------------------> Positive balance
+
+                bool counterPartyIncrease = (counterBalance * transfers[i].amount < 0)
+                    || (counterBalance * (counterBalance - transfers[i].amount) < 0);
+
+                bool insuranceFundIncrease = (insuranceBalance * transfers[i].amount > 0)
+                    || (insuranceBalance * (insuranceBalance + transfers[i].amount) < 0);
+
+                if (counterPartyIncrease || insuranceFundIncrease) {
                     revert Errors.CannotIncreasePosition();
                 }
             }

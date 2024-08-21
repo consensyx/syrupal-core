@@ -58,8 +58,8 @@ When a user's USDX balance falls below the MM, they need to be liquidated. The l
 If at any step the user's assets return above the IM (initial margin), the user can be reclassified as a normal user. If the requirement is not met, the process continues to the below steps
 
 
-* Takeover: If after these stages the user's assets are still below the MM, invoke the takeover function in the PositionManager contract, transferring all the user's assets (including USDX) to the Insurance Fund account.
-* AutoDeleverage: The offline matching engine, following an algorithm, typically selects the largest profit-holder of this option in the market as the counterparty to trade with the Insurance Fund. The closed positions are automatically settled according to BSM pricing, and the counterparty's profits and losses are fully transparent.
+* Takeover: Invoke the **takeover** function in the PositionManager contract, transferring all the user's assets (including USDX) to the Insurance Fund account.
+* AutoDeleverage: The offline matching engine, following an algorithm, typically selects the largest profit-holder of this option in the market as the counterparty to trade with the Insurance Fund. The closed positions are automatically settled according to BSM pricing, and the counterparty's profits and losses are fully transparent and fair.
 
 
 ## About Insurance Fund
@@ -70,7 +70,7 @@ When closing positions for the Insurance Fund, profits and losses (usually losse
 
 If the USDX in the Insurance Fund is insufficient to pay the counterparty during a position closing (AutoDeleverage), the shortfall will be covered by minting additional USDX. This will cause the USDX totalSupply to exceed the actual USDC balance locked in the USDX contract.
 
-When the USDC/USDX exchange rate drops below 1, you can call the donate function in the Insurance Fund contract to make up the shortfall, restoring the exchange rate to 1.
+When the USDC/USDX exchange rate drops below 1, anyone (the protocol) can call the donate function in the Insurance Fund contract to make up the shortfall, restoring the exchange rate to 1.
 
 ## Oracle
 Since we are an options derivatives project, the accuracy and timeliness of price and volatility data are extremely important. Instead of using third-party projects like Chainlink, we use data from third-party service providers to supply us with spot prices, forward prices, and volatility data. Our backend programs write this real-time data into the contract.

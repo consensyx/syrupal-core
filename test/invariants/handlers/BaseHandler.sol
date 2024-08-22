@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {console2 as console} from "forge-std/Console2.sol";
+import {console} from "forge-std/console.sol";
 
 /// @notice Base contract with common logic needed by all handler contracts.
 abstract contract BaseHandler {

@@ -102,6 +102,8 @@ contract BaseSetup is Test {
         positionManager =
             new PositionManager(hub, usdx, option, liquidation, address(this), "Margin Accounts", "MarginNFTs");
 
+        assertEq(managerAddress, address(positionManager));
+
         hub.setProtocol(positionManager, usdx, option, liquidation, insuranceFund);
 
         stableOracle = new SpotOracle();

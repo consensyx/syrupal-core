@@ -7,6 +7,7 @@ import {SignedMath} from "openzeppelin/utils/math/SignedMath.sol";
 
 import {Errors} from "../../src//libraries/Errors.sol";
 import {Encoding} from "../../src//external/Encoding.sol";
+import {TStorage} from "../../src/libraries/TStorage.sol";
 import {UniqueArray} from "../../src/libraries/UniqueArray.sol";
 import {DecimalMath} from "../../src/external/decimals/DecimalMath.sol";
 import {SignedDecimalMath} from "../../src/external/decimals/SignedDecimalMath.sol";
@@ -14,17 +15,22 @@ import {SignedDecimalMath} from "../../src/external/decimals/SignedDecimalMath.s
 import {IHub} from "../../src//interfaces/IHub.sol";
 import {IOption} from "../../src/interfaces/IOption.sol";
 import {ILiquidation} from "../../src/interfaces/ILiquidation.sol";
+import {IPositionManager} from "../../src/interfaces/IPositionManager.sol";
 import {IForwardOracle} from "../../src/oracle/interfaces/IForwardOracle.sol";
 
 contract MockOption is IOption, Ownable2Step {
     using SafeCast for uint256;
     using SafeCast for int256;
+    using TStorage for uint256;
     using DecimalMath for uint256;
     using UniqueArray for uint256[];
     using SignedDecimalMath for int256;
 
     /// @dev The Hub contract addres
     IHub public hub;
+
+    /// @dev Position manager contract address
+    IPositionManager public manager;
 
     /// @dev Liquidation contract address
     ILiquidation public liquidation;
@@ -35,25 +41,14 @@ contract MockOption is IOption, Ownable2Step {
     /// @dev The maximum allowed number of opened positions per sub-account
     uint64 internal constant MAX_OPEN_POSITIONS = 128;
 
-    /*//////////////////////////////////////////////////////////////////////////
-                                 USER INFO
-    //////////////////////////////////////////////////////////////////////////*/
-
     /// @dev Maps account IDs to their positions and their balances
     mapping(uint256 accountId => mapping(uint256 subId => IndexBalance)) internal balances;
 
     /// @dev Maps account IDs to lists of open position IDs
     mapping(uint256 accountId => uint256[]) internal positions;
 
-    /*//////////////////////////////////////////////////////////////////////////
-                                 MARKET INFO
-    //////////////////////////////////////////////////////////////////////////*/
-
     /// @dev Maps market IDs to their associated forward price oracles
     mapping(uint16 marketId => IForwardOracle) public forwardOracle;
-
-    /// @dev Tracks the open interest before a specific transaction for a given option
-    mapping(uint256 subId => mapping(uint256 txId => OISnapshot)) public beforeOpenInterest;
 
     /// @dev Maps sub-IDs to their total open interest
     mapping(uint256 subId => uint256) public openInterest;
@@ -64,9 +59,11 @@ contract MockOption is IOption, Ownable2Step {
 
     /// @notice Constructs the Option contract and initializes market settings
     /// @param _hub Reference to the Hub contract
+    /// @param _manager Reference to the Position manager contract
     /// @param _liquidation Reference to the Liquidation contract
-    constructor(IHub _hub, ILiquidation _liquidation) {
+    constructor(IHub _hub, IPositionManager _manager, ILiquidation _liquidation) {
         hub = _hub;
+        manager = _manager;
         liquidation = _liquidation;
     }
 
@@ -83,7 +80,7 @@ contract MockOption is IOption, Ownable2Step {
         external
         returns (int256 postBalance, uint64 oiFee)
     {
-        if (msg.sender != address(hub.manager())) {
+        if (msg.sender != address(manager)) {
             revert Errors.OnlyProtocol();
         }
 
@@ -146,7 +143,7 @@ contract MockOption is IOption, Ownable2Step {
     /// @param marketId The market identifier
     /// @param _forwardOracle The address of the forward oracle contract
     function setForwardOracle(uint16 marketId, address _forwardOracle) external onlyOwner {
-        hub.manager().isMarketExist(marketId);
+        manager.isMarketExist(marketId);
         forwardOracle[marketId] = IForwardOracle(_forwardOracle);
         emit ForwardOracleSet(marketId, _forwardOracle);
     }
@@ -268,10 +265,16 @@ contract MockOption is IOption, Ownable2Step {
     /// @param subId The sub-ID of the option for which the snapshot is being taken
     /// @param txId The transaction ID for which the snapshot is being taken
     function _preSnapshotOI(uint256 subId, uint256 txId) internal {
-        if (beforeOpenInterest[subId][txId].initialized) return;
+        uint256 beforeOISlot = uint256(keccak256(abi.encode(subId, txId)));
+
+        ///     <-- 15 bits -->  <---  240 bit --- >   <--- 1 bit--- >
+        ///        0               Open interest        initialized
+
+        if (beforeOISlot.tload() & 1 == 1) return;
 
         uint256 oi = openInterest[subId];
-        beforeOpenInterest[subId][txId] = OISnapshot({initialized: true, oi: oi.toUint240()});
+
+        beforeOISlot.tstore(1 | oi.toUint240() << 1);
 
         emit SnapshotOI(subId, txId, oi);
     }
@@ -294,7 +297,7 @@ contract MockOption is IOption, Ownable2Step {
     /// @param txId The transaction ID for which the fee is calculated
     /// @return fee The calculated open interest fee
     function _calcOpenInterestFee(int256 delta, uint256 subId, uint256 txId) internal view returns (uint64 fee) {
-        uint256 beforeOI = beforeOpenInterest[subId][txId].oi;
+        uint256 beforeOI = uint256(keccak256(abi.encode(subId, txId))).tload() >> 1;
 
         if (!(openInterest[subId] > beforeOI)) return 0;
 

@@ -43,6 +43,8 @@ contract OptionPayoffTest is Test {
             hub, IUSDX(address(0)), option, liquidation, address(this), "Margin Accounts", "MarginNFTs"
         );
 
+        assertEq(managerAddress, address(positionManager));
+
         hub.setProtocol(positionManager, IUSDX(address(0)), option, liquidation, IInsuranceFund(address(0)));
 
         positionManager.createMarket("ETH");

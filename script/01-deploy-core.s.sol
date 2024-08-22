@@ -69,6 +69,8 @@ contract DeployCoreScript is Utils {
         PositionManager positionManager =
             new PositionManager(hub, usdx, option, liquidation, operator, "PositionManager NFT", "PM-NFT");
 
+        assert(managerAddress == address(positionManager));
+
         // #2 Hub set protocol account address
         hub.setProtocol(positionManager, usdx, option, liquidation, insuranceFund);
 

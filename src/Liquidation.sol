@@ -46,6 +46,7 @@ contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
         // Will not revert
         if (liquidatedAccounts[liquidateeId]) return;
 
+        // Ignore insurance fund's subaccount even its balance can't met mm requirement
         if (!canLiquidate(liquidateeId, false) || liquidateeId == insuranceFund.recipient()) {
             revert Errors.CannotStartLiquidation();
         }

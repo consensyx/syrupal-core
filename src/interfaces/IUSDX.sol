@@ -55,10 +55,10 @@ interface IUSDX is IAsset {
     /// @param temporarySupply The current temporarySupply value
     event TemporarySupplySet(int256 delta, int256 temporarySupply);
 
-    /// @notice Event emitted when losses are socialized
-    /// @param receiver The account receiving the socialized loss
-    /// @param printUSDAmount The amount of loss socialized
-    event SocializeLoss(uint256 indexed receiver, uint256 printUSDAmount);
+    /// @notice Event emitted when USDX over minted for insurance fund
+    /// @param receiver The account receiving the over minted token
+    /// @param excessAmount The amount of loss socialized
+    event InflationaryLoss(uint256 indexed receiver, uint256 excessAmount);
 
     /// @notice Event emitted when a deposit is made
     /// @param accountId The account receiving the deposit

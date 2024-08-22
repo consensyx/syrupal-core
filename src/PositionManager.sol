@@ -123,12 +123,12 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
             if (transfers[i].amount > 0) {
                 fromBitMap = transfers[i].asset == usdx
-                    ? _bitMap(1, 1, 1) // mark decrease usd flag and short position flag
-                    : _bitMap(1, 1, (fromBitMap >> 2) & 1); // mark short position flag
+                    ? _toBitMap(1, 1, 1) // mark decrease usdx and short position flag
+                    : _toBitMap(1, 1, (fromBitMap >> 2) & 1); // mark short position flag
             } else {
                 toBitMap = transfers[i].asset == usdx
-                    ? _bitMap(1, 1, 1) // mark decrease usdx flag and short position flag
-                    : _bitMap(1, 1, (toBitMap >> 2) & 1); // mark short position flag
+                    ? _toBitMap(1, 1, 1) // mark decrease usdx and short position flag
+                    : _toBitMap(1, 1, (toBitMap >> 2) & 1); // mark short position flag
             }
 
             fromSlot.tstore(fromBitMap | fromFee << 3);
@@ -840,7 +840,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     /// @param marginFlag Flag indicating if this is a margin-related transfer
     /// @param decreaseUSD Flag indicating if this transfer decreases USD balance
     /// @return The constructed bitmap
-    function _bitMap(uint256 uniqueFlag, uint256 marginFlag, uint256 decreaseUSD) internal pure returns (uint256) {
+    function _toBitMap(uint256 uniqueFlag, uint256 marginFlag, uint256 decreaseUSD) internal pure returns (uint256) {
         return uniqueFlag | marginFlag << 1 | decreaseUSD << 2;
     }
 

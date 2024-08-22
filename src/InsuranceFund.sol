@@ -29,11 +29,11 @@ contract InsuranceFund is Ownable2Step, IInsuranceFund {
     /// @dev USDX token contract
     IUSDX public immutable usdx;
 
-    /// @notice The 'operator' is responsible for key operations such as withdraw, payInsolvency, etc.
-    address public operator;
-
     /// @dev The underlying stablecoin contract used by the USDX contract for handling deposits and withdrawals.
     IERC20Metadata public immutable stablecoin;
+
+    /// @notice The 'operator' is responsible for key operations such as withdraw, payInsolvency, etc.
+    address public operator;
 
     /// @dev ID of the insurance fund's recipient sub-account within the system for receive protocol fee
     uint256 public recipient;

@@ -36,11 +36,11 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
     /// @dev stablecoin token address
     IERC20Metadata public immutable stablecoin;
 
-    /// @dev Sub-account that receive protocol fee
-    uint256 public feeRecipient;
-
     /// @dev stablecoin decimal
     uint8 private immutable stableDecimal;
+
+    /// @dev The sub-account that receive protocol fee, it's owner should be insurance fund
+    uint256 public feeRecipient;
 
     /// @dev Gross issued USDX
     uint256 private grossSupply;
@@ -94,21 +94,6 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
         _withdraw(accountId, tokenAmount, receiver);
     }
 
-    /// @notice It is the only entry point to modify the user's USDX balance
-    /// @dev only position manager or subAccount can call this function
-    /// @param adjustment struct for changes in the sub-account's USDX balance
-    /// @param txId txid corresponding to the current balance change transaction
-    function updateBalance(BalanceAdjustment memory adjustment, uint256 txId)
-        public
-        returns (int256 postBalance, uint64 oiFee)
-    {
-        if (msg.sender != address(manager)) {
-            revert Errors.OnlyProtocol();
-        }
-
-        return (_updateBalance(adjustment, txId), 0);
-    }
-
     /// @inheritdoc IUSDX
     function donate(uint256 subAccount, uint256 amount) external nonReentrant returns (uint256 burnAmount) {
         if (msg.sender != address(manager.ownerOf(subAccount))) {
@@ -127,6 +112,23 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
             }),
             ""
         );
+    }
+
+    /// @notice It is the only entry point to modify the user's USDX balance
+    /// @dev only position manager or subAccount can call this function
+    /// @param adjustment struct for changes in the sub-account's USDX balance
+    /// @param txId txid corresponding to the current balance change transaction
+    /// @return postBalance the balance after update
+    /// @return oiFee always return 0
+    function updateBalance(BalanceAdjustment memory adjustment, uint256 txId)
+        public
+        returns (int256 postBalance, uint64 oiFee)
+    {
+        if (msg.sender != address(manager)) {
+            revert Errors.OnlyProtocol();
+        }
+
+        return (_updateBalance(adjustment, txId), 0);
     }
 
     /// @inheritdoc IUSDX
@@ -172,46 +174,6 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
                                        INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-    function _balanceAdjustment(BalanceAdjustment memory adjustment, bytes memory preData)
-        internal
-        returns (int256 postBalance)
-    {
-        uint256 txId = hub.incrementTxId();
-        postBalance = _updateBalance(adjustment, txId);
-
-        // Only withdraw need to check margin
-        if (adjustment.amount < 0) {
-            manager.evaluateMargin(txId, adjustment.accountId, true, 0, address(this), preData);
-        }
-    }
-
-    function _updateBalance(BalanceAdjustment memory adjustment, uint256 txId) internal returns (int256 postBalance) {
-        hub.updateLastTxId(adjustment.accountId, txId);
-        int256 preBalance = balances[adjustment.accountId];
-
-        postBalance = preBalance + adjustment.amount;
-
-        if (adjustment.accountId == feeRecipient && postBalance < 0) {
-            emit SocializeLoss(feeRecipient, (-postBalance).toUint256());
-            postBalance = 0;
-        }
-
-        // update post balance
-        balances[adjustment.accountId] = postBalance.toInt240();
-
-        uint256 _grossSupply =
-            (grossSupply.toInt256() + SignedMath.max(0, postBalance) - SignedMath.max(0, preBalance)).toUint256();
-
-        uint256 _grossDebt =
-            (grossDebt.toInt256() + SignedMath.min(0, preBalance) - SignedMath.min(0, postBalance)).toUint256();
-
-        // update gross variables
-        grossSupply = _grossSupply;
-        grossDebt = _grossDebt;
-
-        emit BalanceUpdated(adjustment.accountId, address(adjustment.asset), adjustment.amount, txId);
-    }
-
     function _deposit(uint256 recipientAccount, uint256 stableAmount) internal {
         stablecoin.safeTransferFrom(msg.sender, address(this), stableAmount);
         uint256 usdAmount = stableAmount.to18Decimals(stableDecimal);
@@ -247,6 +209,50 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
         );
 
         emit Withdraw(accountId, recipient, amount, stableAmount);
+    }
+
+    function _balanceAdjustment(BalanceAdjustment memory adjustment, bytes memory preData)
+        internal
+        returns (int256 postBalance)
+    {
+        uint256 txId = hub.incrementTxId();
+        postBalance = _updateBalance(adjustment, txId);
+
+        // Only withdraw and donate need to check margin
+        if (adjustment.amount < 0) {
+            manager.evaluateMargin(txId, adjustment.accountId, true, 0, address(this), preData);
+        }
+    }
+
+    function _updateBalance(BalanceAdjustment memory adjustment, uint256 txId) internal returns (int256 postBalance) {
+        hub.updateLastTxId(adjustment.accountId, txId);
+        int256 preBalance = balances[adjustment.accountId];
+
+        postBalance = preBalance + adjustment.amount;
+
+        if (adjustment.accountId == feeRecipient && postBalance < 0) {
+            // when the balance of the insurance fund is insufficient to cover the counterparty's profit,
+            // the loss amount needs to be fulfilled by minting additional tokens
+            emit InflationaryLoss(feeRecipient, (-postBalance).toUint256());
+
+            // reset insurance fund balance to 0
+            postBalance = 0;
+        }
+
+        // update post balance
+        balances[adjustment.accountId] = postBalance.toInt240();
+
+        uint256 _grossSupply =
+            (grossSupply.toInt256() + SignedMath.max(0, postBalance) - SignedMath.max(0, preBalance)).toUint256();
+
+        uint256 _grossDebt =
+            (grossDebt.toInt256() + SignedMath.min(0, preBalance) - SignedMath.min(0, postBalance)).toUint256();
+
+        // update gross variables
+        grossSupply = _grossSupply;
+        grossDebt = _grossDebt;
+
+        emit BalanceUpdated(adjustment.accountId, address(adjustment.asset), adjustment.amount, txId);
     }
 
     function _getExchangeRate() internal view returns (uint256 exchangeRate) {

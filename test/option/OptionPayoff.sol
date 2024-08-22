@@ -101,7 +101,7 @@ contract OptionPayoffTest is Test {
         assertEq(uint256(payout), 0);
     }
 
-    function test_cannotcalcPayOffIfPriceNotSet() external {
+    function test_cannotcalcPayOffIfPriceNotSet() external view {
         (, uint256 expiry,,) = option.decodingSubId(uint96(callId));
         assertGt(expiry, block.timestamp);
         (int256 payout, bool priceSettled) = option.calculatePayOff(callId, 1e18);

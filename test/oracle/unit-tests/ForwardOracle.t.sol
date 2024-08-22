@@ -215,7 +215,7 @@ contract UNIT_ForwardOracle is OracleTestUtils {
         oracle.receiveData(data);
     }
 
-    function test_encodeFwdOracleData() public view {
+    function test_encodeFwdOracleData() public pure {
         uint64 expiry_ = 1698998400;
         uint256 settlementStartAggregate_ = 1;
         uint256 currentSpotAggregate_ = 3211595747743195673395200;

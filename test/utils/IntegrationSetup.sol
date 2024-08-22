@@ -202,7 +202,7 @@ contract IntegrationSetup is Test {
         positionManager.batchTransfers(transferBatch, "");
     }
 
-    function _assertExchangeRate() internal {
+    function _assertExchangeRate() internal view {
         assertEq(usdx.getExchangeRate(), 1e18);
     }
 

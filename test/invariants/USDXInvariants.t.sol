@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {InvariantTest} from "forge-std/InvariantTest.sol";
+import {StdInvariant} from "forge-std/StdInvariant.sol";
 
 import {USDX} from "../../src/token/USDX.sol";
 import {USDXHandler} from "./handlers/USDXHandler.sol";
 
 import {BaseSetup} from "../utils/BaseSetup.sol";
 
-contract USDX_Invariant_Test is InvariantTest, BaseSetup {
+contract USDX_Invariant_Test is StdInvariant, BaseSetup {
     /*//////////////////////////////////////////////////////////////////////////
                                    TEST CONTRACTS
     //////////////////////////////////////////////////////////////////////////*/
@@ -34,7 +34,7 @@ contract USDX_Invariant_Test is InvariantTest, BaseSetup {
                                      INVARIANTS
     //////////////////////////////////////////////////////////////////////////*/
 
-    function invariant_totalSupply() external {
+    function invariant_totalSupply() public view {
         assertEq(usdx.totalSupply(), usdc.balanceOf(address(this)));
     }
 

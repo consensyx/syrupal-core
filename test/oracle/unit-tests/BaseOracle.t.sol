@@ -33,7 +33,7 @@ contract UNIT_BaseOracle is OracleTestUtils {
         oracle.setSigner(pkOwner2, true);
     }
 
-    function test_domainSeparator() public {
+    function test_domainSeparator() public view {
         assertEq(oracle.domainSeparator(), domainSeparator);
     }
 

@@ -41,7 +41,7 @@ contract BlackScholesVerifierTest is Test {
         putFiles.push("iterate-t-put.json");
     }
 
-    function testCallPrice() public {
+    function testCallPrice() public view {
         for (uint256 i = 0; i < callFiles.length; i++) {
             string memory content = _readFile(callFiles[i]);
             Option[] memory options = abi.decode(vm.parseJson(content), (Option[]));
@@ -63,7 +63,7 @@ contract BlackScholesVerifierTest is Test {
         }
     }
 
-    function testPutPrice() public {
+    function testPutPrice() public view {
         for (uint256 i = 0; i < putFiles.length; i++) {
             string memory content = _readFile(putFiles[i]);
             Option[] memory options = abi.decode(vm.parseJson(content), (Option[]));

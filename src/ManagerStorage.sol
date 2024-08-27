@@ -67,7 +67,7 @@ abstract contract ManagerStorage {
     mapping(address caller => bool) public feeExemption;
 
     /// @dev Addresses are authorized to accept customize manager data
-    mapping(address receiver => bool) internal dataReceiver;
+    mapping(address receiver => bool) public dataReceiver;
 
     /// @dev Trusted and low risk accounts, when they open a position, they only need to meet the maintenance margin requirements.
     mapping(address caller => bool) public mmCallerAccounts;

@@ -1,4 +1,4 @@
 {
-    "usdc": "",
-    "oracleSigners": ["",""]
+    "usdc": "0xAF448740A32Fd31566B80E2a2436Cb14EcAdd6bd",
+    "oracleSigners": ["0xc4729E75f0cAE6A0627D84E6F62Ed7d84667e981"]
 }

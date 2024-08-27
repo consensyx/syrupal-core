@@ -1,0 +1,5 @@
+{
+  "forwardOracle": "0x18A2c4e34C8117882b2572c846e5D1a28BF40377",
+  "spotOracle": "0x2530d1Ff8869d563a9e39775209f6B8bf8b2c6DE",
+  "volOracle": "0x92ab836fea5388ef340dFd6B9b590892d4cb5948"
+}

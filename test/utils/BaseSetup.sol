@@ -90,7 +90,7 @@ contract BaseSetup is Test {
 
         hub = new Hub();
 
-        address managerAddress = computeCreateAddress(address(this), 7);
+        address managerAddress = vm.computeCreateAddress(address(this), 7);
         usdx = new USDX(hub, PositionManager(managerAddress), usdc);
 
         insuranceFund = new InsuranceFund(PositionManager(managerAddress), usdx, address(this));

@@ -87,7 +87,7 @@ contract IntegrationSetup is Test {
 
         usdc = new MockERC20("USDC", "USDC", 6);
 
-        address managerAddress = computeCreateAddress(address(this), 7);
+        address managerAddress = vm.computeCreateAddress(address(this), 7);
 
         usdx = new USDX(hub, PositionManager(managerAddress), usdc);
 

@@ -42,16 +42,16 @@ contract DeployCoreScript is Utils {
             (address)
         );
 
-        // #1 Deploy protocol core address
-        Hub hub = new Hub();
-
         address managerAddress;
         // avoid stak too deep issue
         {
             address deployer = vm.addr(deployerPrivateKey);
             uint256 nonce = vm.getNonce(deployer);
-            managerAddress = computeCreateAddress(deployer, nonce + 5);
+            managerAddress = vm.computeCreateAddress(deployer, nonce + 5);
         }
+
+        // #1 Deploy protocol core address
+        Hub hub = new Hub();
 
         // nonce + 1
         USDX usdx = new USDX(hub, PositionManager(managerAddress), IERC20Metadata(usdc));

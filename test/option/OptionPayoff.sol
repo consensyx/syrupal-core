@@ -34,7 +34,7 @@ contract OptionPayoffTest is Test {
 
         hub = new Hub();
 
-        address managerAddress = computeCreateAddress(address(this), 5);
+        address managerAddress = vm.computeCreateAddress(address(this), 5);
 
         liquidation = new Liquidation(PositionManager(managerAddress), IInsuranceFund(address(0)));
         option = new Option(hub, PositionManager(managerAddress), liquidation);

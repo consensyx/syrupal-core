@@ -8,7 +8,7 @@ contract BatchTransferTest is IntegrationSetup {
 
     address charlie = address(0xcc);
     uint256 charlieAcc;
-    address dave = address(0xcc);
+    address dave = address(0xdd);
     uint256 daveAcc;
 
     int256 amountOfContracts = 1e18;
@@ -17,6 +17,7 @@ contract BatchTransferTest is IntegrationSetup {
 
     function setUp() public {
         _setupIntegration();
+        option.setOIFee(0.1e18);
 
         charlieAcc = positionManager.createSubAccount(charlie);
         vm.prank(charlie);
@@ -40,6 +41,7 @@ contract BatchTransferTest is IntegrationSetup {
     }
 
     function test_threeWayNoOIFee() public {
+        option.setOIFee(0);
         uint256 callStrike = 2000e18;
         uint112 callId = getSubId(uint16(markets["weth"].id), expiry, callStrike, true);
 
@@ -89,6 +91,7 @@ contract BatchTransferTest is IntegrationSetup {
 
         IAsset.BalanceTransfer[] memory transferBatch = new IAsset.BalanceTransfer[](2);
 
+        // tx1: alice short, bob long
         transferBatch[0] = IAsset.BalanceTransfer({
             from: aliceAcc,
             to: bobAcc,
@@ -97,6 +100,7 @@ contract BatchTransferTest is IntegrationSetup {
             amount: amountOfContracts
         });
 
+        // tx2: bob short charlie long
         transferBatch[1] = IAsset.BalanceTransfer({
             from: bobAcc,
             to: charlieAcc,
@@ -117,9 +121,13 @@ contract BatchTransferTest is IntegrationSetup {
         positionManager.exercise(charlieAcc);
 
         (aliceBal, bobBal, charlieBal, daveBal) = _getAllUSDXBalances();
-        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT - uint256(priceIncrease) - oiFee);
-        assertEq(uint256(bobBal), DEFAULT_DEPOSIT);
-        assertEq(uint256(charlieBal), DEFAULT_DEPOSIT + uint256(priceIncrease) - oiFee);
+
+        // charlie only long position, so he will not be charged by OI Fee
+        // alice short position, but according to OI fee rules in Option module, his OI fee will be 0
+        // bob long position, then short position, will be charged OI fee
+        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT - uint256(priceIncrease));
+        assertEq(uint256(bobBal), DEFAULT_DEPOSIT - oiFee);
+        assertEq(uint256(charlieBal), DEFAULT_DEPOSIT + uint256(priceIncrease));
     }
 
     function test_threeWayTradeITMPut() public {
@@ -156,9 +164,9 @@ contract BatchTransferTest is IntegrationSetup {
 
         (aliceBal, bobBal, charlieBal, daveBal) = _getAllUSDXBalances();
 
-        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT - uint256(priceDecrease) - oiFee);
-        assertEq(uint256(bobBal), DEFAULT_DEPOSIT);
-        assertEq(uint256(charlieBal), DEFAULT_DEPOSIT + uint256(priceDecrease) - oiFee);
+        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT - uint256(priceDecrease));
+        assertEq(uint256(bobBal), DEFAULT_DEPOSIT - oiFee);
+        assertEq(uint256(charlieBal), DEFAULT_DEPOSIT + uint256(priceDecrease));
     }
 
     function test_threeWayOTMCall() public {
@@ -195,8 +203,8 @@ contract BatchTransferTest is IntegrationSetup {
 
         positionManager.batchTransfers(transferBatch, "");
         (aliceBal, bobBal, charlieBal,) = _getAllUSDXBalances();
-        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium) - oiFee);
-        assertEq(uint256(bobBal), DEFAULT_DEPOSIT);
+        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium));
+        assertEq(uint256(bobBal), DEFAULT_DEPOSIT - oiFee);
         assertEq(uint256(charlieBal), DEFAULT_DEPOSIT - uint256(premium) - oiFee);
 
         vm.warp(expiry);
@@ -209,8 +217,8 @@ contract BatchTransferTest is IntegrationSetup {
         positionManager.exercise(charlieAcc);
 
         (aliceBal, bobBal, charlieBal,) = _getAllUSDXBalances();
-        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium) - oiFee);
-        assertEq(uint256(bobBal), DEFAULT_DEPOSIT);
+        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium));
+        assertEq(uint256(bobBal), DEFAULT_DEPOSIT - oiFee);
         assertEq(uint256(charlieBal), DEFAULT_DEPOSIT - uint256(premium) - oiFee);
     }
 
@@ -243,8 +251,8 @@ contract BatchTransferTest is IntegrationSetup {
 
         positionManager.batchTransfers(transferBatch, "");
         (aliceBal, bobBal, charlieBal,) = _getAllUSDXBalances();
-        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium) - oiFee);
-        assertEq(uint256(bobBal), DEFAULT_DEPOSIT);
+        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium));
+        assertEq(uint256(bobBal), DEFAULT_DEPOSIT - oiFee);
         assertEq(uint256(charlieBal), DEFAULT_DEPOSIT - uint256(premium) - oiFee);
 
         vm.warp(expiry);
@@ -257,8 +265,8 @@ contract BatchTransferTest is IntegrationSetup {
         positionManager.exercise(charlieAcc);
 
         (aliceBal, bobBal, charlieBal,) = _getAllUSDXBalances();
-        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium) - oiFee);
-        assertEq(uint256(bobBal), DEFAULT_DEPOSIT);
+        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT + uint256(premium));
+        assertEq(uint256(bobBal), DEFAULT_DEPOSIT - oiFee);
         assertEq(uint256(charlieBal), DEFAULT_DEPOSIT - uint256(premium) - oiFee);
     }
 
@@ -309,10 +317,11 @@ contract BatchTransferTest is IntegrationSetup {
         positionManager.exercise(daveAcc);
 
         (aliceBal, bobBal, charlieBal, daveBal) = _getAllUSDXBalances();
-        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT - uint256(priceIncrease) - oiFee);
-        assertEq(uint256(bobBal), DEFAULT_DEPOSIT);
-        assertEq(uint256(charlieBal), DEFAULT_DEPOSIT);
-        assertEq(uint256(daveBal), DEFAULT_DEPOSIT + uint256(priceIncrease) - oiFee);
+        assertEq(uint256(aliceBal), DEFAULT_DEPOSIT - uint256(priceIncrease));
+        assertEq(uint256(bobBal), DEFAULT_DEPOSIT - oiFee);
+        assertEq(uint256(charlieBal), DEFAULT_DEPOSIT - oiFee);
+        // assertEq(uint256(daveBal), DEFAULT_DEPOSIT + uint256(priceIncrease) - oiFee);
+        assertEq(uint256(daveBal), DEFAULT_DEPOSIT + uint256(priceIncrease));
     }
 
     function _getAllUSDXBalances()

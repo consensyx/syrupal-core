@@ -40,7 +40,7 @@ interface IPositionManager is IERC721 {
         uint256 txId,
         uint256 subAccount,
         bool decreaseUSD,
-        uint64 oiFee,
+        uint128 oiFee,
         address caller,
         bytes calldata data
     ) external;

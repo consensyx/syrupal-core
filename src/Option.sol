@@ -81,7 +81,7 @@ contract Option is IOption, Ownable2Step {
     /// @return oiFee Open interest fee calculated for the adjustment
     function updateBalance(BalanceAdjustment memory adjustment, uint256 txId)
         external
-        returns (int256 postBalance, uint64 oiFee)
+        returns (int256 postBalance, uint128 oiFee)
     {
         if (msg.sender != address(manager)) {
             revert Errors.OnlyProtocol();
@@ -222,7 +222,7 @@ contract Option is IOption, Ownable2Step {
     /// @return oiFee The open interest fee calculated based on the adjustment.
     function _preUpdate(BalanceAdjustment memory adjustment, uint256 txId, int256 preBalance)
         internal
-        returns (int256 postBalance, uint64 oiFee)
+        returns (int256 postBalance, uint128 oiFee)
     {
         // Open interest tracking
         _preSnapshotOI(adjustment.subId, txId);
@@ -298,7 +298,7 @@ contract Option is IOption, Ownable2Step {
     /// @param subId The sub-ID of the option
     /// @param txId The transaction ID for which the fee is calculated
     /// @return fee The calculated open interest fee
-    function _calcOpenInterestFee(int256 delta, uint256 subId, uint256 txId) internal view returns (uint64 fee) {
+    function _calcOpenInterestFee(int256 delta, uint256 subId, uint256 txId) internal view returns (uint128 fee) {
         uint256 beforeOI = uint256(keccak256(abi.encode(subId, txId))).tload() >> 1;
 
         if (!(openInterest[subId] > beforeOI)) return 0;
@@ -306,6 +306,6 @@ contract Option is IOption, Ownable2Step {
         (uint256 marketId, uint256 expiry,,) = Encoding.fromSubId(subId.toUint112());
         uint256 forwardPrice = forwardOracle[marketId.toUint16()].getForwardPrice(uint64(expiry));
 
-        fee = SignedMath.abs(delta).multiplyDecimal(forwardPrice).multiplyDecimal(OIFee).toUint64();
+        fee = SignedMath.abs(delta).multiplyDecimal(forwardPrice).multiplyDecimal(OIFee).toUint128();
     }
 }

@@ -84,21 +84,21 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
             if ((transfers[i].from == 0 && transfers[i].to == 0) || transfers[i].amount == 0) continue;
 
             // transfer asset
-            (uint64 fromFee, uint64 toFee) = _transferAsset(transfers[i], txId);
+            (uint128 fromFee, uint128 toFee) = _transferAsset(transfers[i], txId);
 
             /// For saving gas, we use bitmap to store every sub-acccount transfer info
             ///
-            /// (1) UniqueFlag       1bit    : Mark this sub-account has been accessed
-            /// (2) DecreaseUSD      1bit    : Mark the USD balance of this sub-account is decreasing
-            /// (3) ShortPosition    1bit    : This sub-account has a short position
-            /// (4) OIFee            64bits  : The open interest fee for per transfer
-            /// (5)                  189bits : Zero-bits
+            /// (1) UniqueFlag       1bit       : Mark this sub-account has been accessed
+            /// (2) DecreaseUSD      1bit       : Mark the USD balance of this sub-account is decreasing
+            /// (3) ShortPosition    1bit       : This sub-account has a short position
+            /// (4) OIFee            128bits    : The open interest fee for per transfer
+            /// (5)                  125bits    : Zero-bits
             /// ========================================================================================
             ///
-            ///          (  )              (4)            (3)             (2)            (1)
-            ///      <-- 189 bits --> <-- 64 bits --> <-- 1 bit -->   <-- 1 bit -->   <-- 1 bit -->
-            ///         Zeros            OIFee       ShortPosition    DecreaseUSD     UniqueFlag
-            ///      <--- most significant bit                          least significant bit  --->
+            ///          ( 5 )              (4)              (3)                 (2)             (1)
+            ///      <-- 125 bits --> <-- 128 bits -->  <--  1 bit  -->   <--  1 bit  -->   <-- 1 bit -->
+            ///         Zeros             OIFee          ShortPosition     DecreaseUSD       UniqueFlag
+            ///      <--- most significant bit                                least significant bit  --->
 
             uint256 fromSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, transfers[i].from)));
             uint256 toSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, transfers[i].to)));
@@ -118,8 +118,8 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
                 uniqueAccounts[count++] = transfers[i].to;
             }
 
-            fromFee += (fromBitMap >> 3 & type(uint64).max).toUint64();
-            toFee += (toBitMap >> 3 & type(uint64).max).toUint64();
+            fromFee += (fromBitMap >> 3 & type(uint128).max).toUint128();
+            toFee += (toBitMap >> 3 & type(uint128).max).toUint128();
 
             if (transfers[i].amount > 0) {
                 fromBitMap = transfers[i].asset == usdx
@@ -145,7 +145,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
                     txId,
                     uniqueAccounts[i],
                     (bitMap >> 2) & 1 == 1, // decrease usdx flag
-                    (bitMap >> 3).toUint64(), // OI Fee
+                    (bitMap >> 3).toUint128(), // OI Fee
                     msg.sender,
                     preData
                 );
@@ -161,7 +161,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
         uint256 txId,
         uint256 subAccount,
         bool decreaseUSD,
-        uint64 oiFee,
+        uint128 oiFee,
         address caller,
         bytes calldata preData
     ) public nonReentrant {
@@ -183,7 +183,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
         uint256 txId,
         uint256 subAccount,
         bool decreaseUSD,
-        uint64 oiFee,
+        uint128 oiFee,
         address caller,
         bytes calldata preData
     ) internal {
@@ -748,7 +748,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     /// @return toOIFee The fee for the receiver
     function _transferAsset(IAsset.BalanceTransfer calldata transfer, uint256 txId)
         internal
-        returns (uint64 fromOIFee, uint64 toOIFee)
+        returns (uint128 fromOIFee, uint128 toOIFee)
     {
         if (transfer.from == transfer.to) {
             revert Errors.SelfTransfer(msg.sender, transfer.from);
@@ -800,6 +800,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
 
         // charge open interest fee
         if (oiFee == 0 || feeRecipient == 0) return;
+
         _transfer(accountId, feeRecipient, usdx, 0, int256(oiFee));
     }
 

@@ -119,10 +119,10 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
     /// @param adjustment struct for changes in the sub-account's USDX balance
     /// @param txId txid corresponding to the current balance change transaction
     /// @return postBalance the balance after update
-    /// @return oiFee always return 0
+    /// @return oiFee always return 0, only option transaction will be charged OI fee.
     function updateBalance(BalanceAdjustment memory adjustment, uint256 txId)
         public
-        returns (int256 postBalance, uint64 oiFee)
+        returns (int256 postBalance, uint128 oiFee)
     {
         if (msg.sender != address(manager)) {
             revert Errors.OnlyProtocol();

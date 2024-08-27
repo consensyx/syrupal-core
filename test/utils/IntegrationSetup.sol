@@ -119,6 +119,7 @@ contract IntegrationSetup is Test {
         positionManager.setExecutor(address(insuranceFund), true);
         insuranceFund.createRecipient();
         usdx.setFeeRecipient(insuranceFund.recipient());
+        positionManager.setFeeRecipient(insuranceFund.recipient());
     }
 
     function _deployMarket(string memory key, uint96 initSpotPrice) internal returns (uint256 marketId) {

@@ -33,7 +33,7 @@ interface IAsset {
     /// @return oiFee The open interest fee incurred from this transaction.
     function updateBalance(BalanceAdjustment memory adjustment, uint256 txId)
         external
-        returns (int256 postBalance, uint64 oiFee);
+        returns (int256 postBalance, uint128 oiFee);
 
     /// @notice Emitted when an asset's balance is updated.
     /// @param accountId The sub-account ID.

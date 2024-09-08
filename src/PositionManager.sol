@@ -97,7 +97,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
             ///
             ///          ( 5 )              (4)              (3)                 (2)             (1)
             ///      <-- 125 bits --> <-- 128 bits -->  <--  1 bit  -->   <--  1 bit  -->   <-- 1 bit -->
-            ///         Zeros             OIFee          ShortPosition     DecreaseUSD       UniqueFlag
+            ///         Zeros             OIFee          DecreaseUSD        ShortPosition     UniqueFlag
             ///      <--- most significant bit                                least significant bit  --->
 
             uint256 fromSlot = uint256(keccak256(abi.encode(TRANSIENT_SUB_TYPE_HASH, transfers[i].from)));
@@ -659,7 +659,10 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     function setMarginParams(uint256 marketId, MarginParams calldata params) external onlyOperator {
         isMarketExist(marketId);
 
-        if (params.IMUpperRatio > UNIT || params.IMLowerRatio > UNIT || params.MMRatio > UNIT) {
+        if (
+            params.IMUpperRatio > UNIT || params.IMLowerRatio > UNIT || params.MMRatio > UNIT
+                || params.IMLowerRatio > params.IMUpperRatio
+        ) {
             revert Errors.InvalidMarginParams();
         }
 
@@ -734,7 +737,7 @@ contract PositionManager is IPositionManager, ManagerStorage, ERC721, Ownable2St
     /// @notice Check whether a given market ID exists
     /// @param marketId The market ID to check
     function isMarketExist(uint256 marketId) public view {
-        if (marketId > lastMarketId) revert Errors.NotExistMarket();
+        if (marketId > lastMarketId || marketId == 0) revert Errors.NotExistMarket();
     }
 
     /*//////////////////////////////////////////////////////////////////////////

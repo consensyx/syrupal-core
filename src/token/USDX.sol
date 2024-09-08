@@ -77,12 +77,16 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
 
     /// @inheritdoc IUSDX
     function deposit(uint256 recipientAccount, uint256 stableAmount) external nonReentrant {
+        manager.ownerOf(recipientAccount);
+
         _deposit(recipientAccount, stableAmount);
     }
 
     /// @inheritdoc IUSDX
     function withdraw(uint256 accountId, uint256 stableAmount, address receiver) external nonReentrant {
+        if (receiver == address(0)) revert Errors.ZeroAddress();
         if (msg.sender != manager.ownerOf(accountId)) revert Errors.OnlyAccountOwner();
+
         // Withdrawals will be suspend if maintenance margin < 0
         if (hub.liquidation().canLiquidate(accountId, false)) revert Errors.NegativeMargin();
 
@@ -175,7 +179,6 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
     //////////////////////////////////////////////////////////////////////////*/
 
     function _deposit(uint256 recipientAccount, uint256 stableAmount) internal {
-        stablecoin.safeTransferFrom(msg.sender, address(this), stableAmount);
         uint256 usdAmount = stableAmount.to18Decimals(stableDecimal);
 
         _balanceAdjustment(
@@ -188,6 +191,8 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
             ""
         );
 
+        stablecoin.safeTransferFrom(msg.sender, address(this), stableAmount);
+
         emit Deposit(recipientAccount, msg.sender, usdAmount, stableAmount);
     }
 
@@ -195,8 +200,6 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
         uint256 exchangeRate = _getExchangeRate();
 
         uint256 stableAmount = amount.multiplyDecimal(exchangeRate).from18Decimals(stableDecimal);
-
-        stablecoin.safeTransfer(recipient, stableAmount);
 
         _balanceAdjustment(
             BalanceAdjustment({
@@ -207,6 +210,8 @@ contract USDX is IUSDX, Ownable2Step, ReentrancyGuardTransient {
             }),
             ""
         );
+
+        stablecoin.safeTransfer(recipient, stableAmount);
 
         emit Withdraw(accountId, recipient, amount, stableAmount);
     }

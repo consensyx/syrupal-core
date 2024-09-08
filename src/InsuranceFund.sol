@@ -3,10 +3,10 @@ pragma solidity ^0.8.24;
 
 import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
 import {Ownable2Step} from "openzeppelin/access/Ownable2Step.sol";
-import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Metadata} from "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {Errors} from "./libraries/Errors.sol";
+import {SafeERC20} from "./libraries/SafeERC20.sol";
 import {DecimalMath} from "./external/decimals/DecimalMath.sol";
 import {ConvertDecimals} from "./external/decimals/ConvertDecimals.sol";
 
@@ -24,7 +24,7 @@ contract InsuranceFund is Ownable2Step, IInsuranceFund {
     using DecimalMath for uint256;
 
     /// @dev Position manager contract address
-    IPositionManager public manager;
+    IPositionManager immutable manager;
 
     /// @dev USDX token contract
     IUSDX public immutable usdx;
@@ -51,7 +51,7 @@ contract InsuranceFund is Ownable2Step, IInsuranceFund {
         operator = _operator;
 
         stablecoin = usdx.stablecoin();
-        stablecoin.approve(address(_usdx), type(uint256).max);
+        stablecoin.safeApprove(address(_usdx), type(uint256).max);
     }
 
     /// @notice Creates a recipient sub-account for the insurance fund within the system
@@ -87,7 +87,7 @@ contract InsuranceFund is Ownable2Step, IInsuranceFund {
     /// @notice Reset the allowance granted to the USDX contract
     /// @param amount The new allowance amount
     function resetApproval(uint256 amount) external onlyOperator {
-        stablecoin.approve(address(usdx), amount);
+        stablecoin.safeApprove(address(usdx), amount);
     }
 
     /// @dev Allows the recovery of ERC20 tokens accidentally sent to this contract

@@ -20,10 +20,10 @@ contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
     address public liquidator;
 
     /// @dev Position manager contract address
-    IPositionManager public manager;
+    IPositionManager immutable manager;
 
     /// @dev Insurance fund contract address
-    IInsuranceFund public insuranceFund;
+    IInsuranceFund immutable insuranceFund;
 
     /// @dev Liquidated account mapping
     mapping(uint256 accountId => bool) public liquidatedAccounts;
@@ -57,7 +57,7 @@ contract Liquidation is ILiquidation, Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice Reclassifies accounts marked for liquidation as normal if their USDX balance - the maintenance margin is greater than zero
-    /// @dev  It will revert if (usdx - maintenance margin) >= 0 is not met
+    /// @dev  It will revert if (usdx - initial margin) >= 0 is not met
     /// @param liquidateeId The sub-account ID of the user being liquidated
     function stopLiquidation(uint256 liquidateeId) external nonReentrant {
         if (msg.sender != liquidator) revert Errors.OnlyLiquidator();

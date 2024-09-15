@@ -3,12 +3,15 @@ pragma solidity ^0.8.24;
 
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 
+import {ConvertDecimals} from "../../src/external/decimals/ConvertDecimals.sol";
+
 import {USDX} from "../../src/token/USDX.sol";
+import {BaseTest} from "./Base.t.sol";
 import {USDXHandler} from "./handlers/USDXHandler.sol";
 
-import {BaseSetup} from "../utils/BaseSetup.sol";
+contract USDX_Invariant_Test is StdInvariant, BaseTest {
+    using ConvertDecimals for uint256;
 
-contract USDX_Invariant_Test is StdInvariant, BaseSetup {
     /*//////////////////////////////////////////////////////////////////////////
                                    TEST CONTRACTS
     //////////////////////////////////////////////////////////////////////////*/
@@ -22,7 +25,7 @@ contract USDX_Invariant_Test is StdInvariant, BaseSetup {
     function setUp() public override {
         super.setUp();
 
-        usdxHandler = new USDXHandler(usdx);
+        usdxHandler = new USDXHandler(usdx, usdc, positionManager, address(this));
 
         targetContract(address(usdxHandler));
 
@@ -35,7 +38,7 @@ contract USDX_Invariant_Test is StdInvariant, BaseSetup {
     //////////////////////////////////////////////////////////////////////////*/
 
     function invariant_totalSupply() public view {
-        assertEq(usdx.totalSupply(), usdc.balanceOf(address(this)));
+        assertEq(usdx.totalSupply().from18Decimals(6), usdxHandler.ghost_depositSum() - usdxHandler.ghost_withdrawSum());
     }
 
     function invariant_callSummary() public view {

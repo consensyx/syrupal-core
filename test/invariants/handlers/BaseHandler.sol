@@ -2,9 +2,19 @@
 pragma solidity ^0.8.24;
 
 import {console} from "forge-std/console.sol";
+import {CommonBase} from "forge-std/Base.sol";
+import {StdUtils} from "forge-std/StdUtils.sol";
+
+import {AddressSet, LibAddressSet} from "../utils/AddressSet.sol";
 
 /// @notice Base contract with common logic needed by all handler contracts.
-abstract contract BaseHandler {
+abstract contract BaseHandler is CommonBase, StdUtils {
+    using LibAddressSet for AddressSet;
+
+    struct User {
+        address account;
+        uint256 subAccount;
+    }
     /*//////////////////////////////////////////////////////////////////////////
                                     STATE-VARIABLES
     //////////////////////////////////////////////////////////////////////////*/
@@ -14,6 +24,36 @@ abstract contract BaseHandler {
 
     /// @dev The total number of calls made to this contract.
     uint256 public totalCalls;
+
+    // AddressSet internal _actors;
+
+    User[] internal _actors;
+
+    // address internal currentActor;
+    User internal currentActor;
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                     MODIFIERS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @dev Records a function call for instrumentation purposes.
+    modifier countCall(string memory functionName) {
+        calls[functionName]++;
+        totalCalls++;
+        _;
+    }
+
+    // modifier createActor() {
+    //     currentActor = msg.sender;
+    //     _actors.add(msg.sender);
+    //     _;
+    // }
+
+    modifier useActor(uint256 actorIndexSeed) {
+        // currentActor = _actors.rand(actorIndexSeed);
+        currentActor = _actors[bound(actorIndexSeed, 0, _actors.length - 1)];
+        _;
+    }
 
     /*//////////////////////////////////////////////////////////////////////////
                                    TEST CONTRACTS
@@ -29,17 +69,6 @@ abstract contract BaseHandler {
     // constructor(IERC20 asset_) {
     //     asset = asset_;
     // }
-
-    /*//////////////////////////////////////////////////////////////////////////
-                                     MODIFIERS
-    //////////////////////////////////////////////////////////////////////////*/
-
-    /// @dev Records a function call for instrumentation purposes.
-    modifier countCall(string memory functionName) {
-        calls[functionName]++;
-        totalCalls++;
-        _;
-    }
 
     /// @dev Simulates the passage of time. The time jump is upper bounded so that streams don't settle too quickly.
     /// @param timeJumpSeed A fuzzed value needed for generating random time warps.

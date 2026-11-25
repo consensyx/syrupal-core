@@ -1,91 +1,88 @@
 # Syrupal Core
 
+## Overview
 
-## About Syrupal
-Syrupal is an on-chain Option Exchange. Currently, there are two main types of options exchanges. One is implemented through AMM-based Uniswap v3 pools, but these are not standard options and at most can be considered pseudo-options. The other type involves offline pricing for options. Our approach uses smart contracts to implement the BSM model for transparent contract pricing.
+Syrupal is an on-chain options protocol with off-chain order matching and fully on-chain settlement, margining, liquidation, and pricing.
 
-## How to Trade Options
-The first thing to consider is how to buy and sell options. In our contract, this is achieved through the PositionManager contract's *batchTransfers* function.
+Option prices are evaluated natively in Solidity using the `Black-76` model, a forward-based `Black-Scholes-Merton` (BSM) variant. As with protocols such as [Derive](https://github.com/derivexyz/v2-core), option pricing is not delegated to an off-chain pricing engine.
 
-```solidity
+Syrupal is not currently operating as a live protocol. This repository preserves its core contracts.
 
-IAsset.BalanceTransfer[] memory transfers = new IAsset.BalanceTransfer[](2);
+I, [xris-dev](https://github.com/xris-dev), developed Syrupal Core's smart contracts during 2024.03–2024.09 while working on the Syrupal Protocol.
 
-// Alice long position and Bob short position
-transfers[0] = IAsset.BalanceTransfer({from: bob, to: alice, asset: option, subId: subId, amount: optionAmount});
+## Architecture
 
-// Alice pays USDX to Bob
-transfers[1] = IAsset.BalanceTransfer({from: alice, to: bob, asset: usdx, subId: 0, amount: usdxAmount});
+- **PositionManager** — ERC-721 subaccounts, atomic settlement, portfolio margin, exercise, takeover, and auto-deleveraging.
+- **Option** — option position accounting, payoff calculation, and open-interest fees.
+- **USDX** — collateral-backed internal cash ledger with support for signed account balances.
+- **Spot / Forward / Volatility Oracles** — signed market-data submission and verification.
+- **Liquidation** — liquidation-state management.
+- **InsuranceFund** — protocol fees, takeover accounting, and insolvency handling.
+- **Black76** — on-chain Black-76 option-pricing library.
 
-positionManager.batchTransfers(transfers, "");
-Our order matching is done through an offline matching engine, so batchTransfers can handle multiple transactions simultaneously.
+## Trading and Settlement
 
-```
+Orders are matched off-chain. An authorized executor submits matched transfers through `PositionManager.batchTransfers`, which atomically updates balances and verifies margin requirements before a transaction can settle.
 
-In **batchTransfer** function, our implementation is similar to a flash loan. We first assume that the user's assets are sufficient to meet the MM requirement and update the user's balance through **updateBalance**. Then, we evaluate the user's margin using the **evaluateMargin** function. If the margin requirement is not met, the entire transaction will be reverted.
+Each account is represented by an ERC-721 subaccount. Subaccounts isolate collateral and positions while allowing a wallet to manage multiple trading accounts.
 
-## SubAccount
-Like many derivatives trading systems, we also use SubAccount mechanism to manage user assets. A single EVM address can create multiple SubAccounts, and the assets of each SubAccount are isolated from one another.
+## Risk Model
 
-We implement each SubAccount as a unique ERC721 token ID by inheriting the ERC721 contract in the PositionManager contract.
+The protocol distinguishes between Initial Margin (IM) and Maintenance Margin (MM). Opening or increasing risk must satisfy IM; an account below MM may enter liquidation. Long option positions do not require margin, while short positions do.
 
-## Asset Composition
-User assets consist of two parts: USDX (which can be understood as the internal cash of the Syrupal system) and Option positions.
+Liquidation is coordinated off-chain and enforced on-chain. A liquidated account may be restored through matched transfers; otherwise, its positions and USDX balance can be taken over by the Insurance Fund and reduced through auto-deleveraging.
 
-## USDX Contract
-USDX can be understood as the stablecoin token within the Syrupal system. It essentially acts as cash. By locking USDC in the contract, USDX is minted at a 1:1 ratio, enabling the management of cash within the contract. From this perspective, the USDX contract functions like a central bank within the system, responsible for minting and burning assets.
+## USDX and Insurance Fund
 
-Considering the nature of trading profits and losses, a user's USDX balance in reality might be negative. Therefore, we define the user's balance data type as int instead of uint. To accommodate this feature while ensuring that the USDX totalSupply does not overflow or underflow, our design approach involves using grossSupply and grossDebt as global variables to solve this issue.
+USDX is the protocol's collateral-backed internal cash ledger. Deposits and withdrawals use the underlying stablecoin, while individual subaccounts may carry signed USDX balances to represent trading profit and loss. The Insurance Fund receives protocol fees, assumes balances during takeover, and handles insolvency shortfalls.
 
-Additionally, given the nature of options products requiring exercise, our options exercise process is sequential for each account. For example, if Alice and Bob are counterparties to a specific option and Alice earns $100, then Bob must lose $100. If Alice's account is exercised first, adding $100, this would temporarily increase the USDX totalSupply. We address this with a temporarySupply variable.
+## Oracle Model
 
-## Margin
-Similar to professional options exchanges, our contract also supports two types of margins: Initial Margin (IM) and Maintenance Margin (MM). You can search for professional definitions of these terms.
+Spot, forward, and volatility data are submitted on-chain as signed payloads. Oracle contracts verify approved signers, signature thresholds, timestamps, deadlines, and heartbeat constraints before accepting data.
 
-Typically, the Initial Margin is higher than the Maintenance Margin.
+## Engineering Design
 
-Long positions do not require margin, only short positions do.
+### EIP-1153 Transient Storage
 
-When a user opens a new position, their USDX balance minus the IM must be greater than 0. However, when determining if a user's assets are in liquidation, we assess whether their USDX balance is greater than the MM.
+Syrupal uses EIP-1153 transient storage (`TLOAD` / `TSTORE`) as a core execution primitive for batch settlement and portfolio risk evaluation.
 
-## About Liquidation
-When a user's USDX balance falls below the MM, they need to be liquidated. The liquidation process consists of the following stages:
+A single expiry may contain many option series with different strikes and call/put directions, while sharing the same market-level spot price and expiry-level forward price. During a transaction, the protocol caches these shared inputs in transient storage, avoiding repeated oracle reads and persistent-storage writes while evaluating multiple positions.
 
-* Mark the user as liquidated.
-* Auction the user's assets at market price.
-* If the market order does not fully process the user's assets and liabilities, continue auctioning the user's assets at a discounted price.
+Transient storage is also used to track per-transaction subaccount state, open-interest snapshots, and reentrancy locks. All transient state is automatically cleared when the transaction completes, making it well suited to atomic settlement flows.
 
-If at any step the user's assets return above the IM (initial margin), the user can be reclassified as a normal user. If the requirement is not met, the process continues to the below steps
+This design improves gas efficiency without persisting intermediate state beyond the transaction.
 
+## Audit
 
-* Takeover: Invoke the **takeover** function in the PositionManager contract, transferring all the user's assets (including USDX) to the Insurance Fund account.
-* AutoDeleverage: The offline matching engine, following an algorithm, typically selects the largest profit-holder of this option in the market as the counterparty to trade with the Insurance Fund. The closed positions are automatically settled according to BSM pricing, and the counterparty's profits and losses are fully transparent and fair.
+The historical Syrupal Core codebase was audited by [PeckShield](https://peckshield.com/). The full report is available at [`audits`](./audits/).
+
+In post-audit feedback, a PeckShield reviewer described Syrupal as “one of the best” option protocols they had audited, citing its “elegant option design and clean implementation.” The original feedback is preserved [here](./audits/Peckshield-feedback.png).
 
 
-## About Insurance Fund
-All protocol fees, such as open interest fees, maker fees, and taker fees, go into this account.
-All liquidated users' assets and liabilities are transferred to the Insurance Fund at the takeover stage.
+## Development
 
-When closing positions for the Insurance Fund, profits and losses (usually losses) are borne by the Insurance Fund.
+Requirements:
 
-If the USDX in the Insurance Fund is insufficient to pay the counterparty during a position closing (AutoDeleverage), the shortfall will be covered by minting additional USDX. This will cause the USDX totalSupply to exceed the actual USDC balance locked in the USDX contract.
-
-When the USDC/USDX exchange rate drops below 1, anyone (the protocol) can call the donate function in the Insurance Fund contract to make up the shortfall, restoring the exchange rate to 1.
-
-## Oracle
-Since we are an options derivatives project, the accuracy and timeliness of price and volatility data are extremely important. Instead of using third-party projects like Chainlink, we use data from third-party service providers to supply us with spot prices, forward prices, and volatility data. Our backend programs write this real-time data into the contract.
-
-
-
-## Commands
+- Foundry
+- Solidity `0.8.24`
+- Cancun-compatible EVM, due to transient storage usage
 
 ### Build
-
 ```shell
-$ forge build
+forge build
 ```
 
 ### Test
+```
+forge test
+```
 
-```shell
-$ forge test
+## License
+
+Copyright © 2024 consensyx. All rights reserved.
+
+This repository is proprietary. Any use, copying, modification, distribution,
+deployment, or derivative work requires prior written permission from the
+copyright holder.
+
+For licensing, commercial use, or collaboration inquiries, please contact:https://github.com/consensyx.
